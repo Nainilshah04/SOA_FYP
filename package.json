@@ -1,0 +1,31 @@
+{
+  "name": "resilient-response-soa",
+  "version": "1.0.0",
+  "description": "A Service-Oriented Platform for Emergency Coordination using GDACS Global Disaster Alerts",
+  "main": "start-all.js",
+  "scripts": {
+    "start": "node start-all.js",
+    "start:orchestrator": "node services/orchestrator-service/index.js",
+    "start:hospital": "node services/hospital-service/index.js",
+    "start:resource": "node services/resource-service/index.js",
+    "start:traffic": "node services/traffic-service/index.js",
+    "start:notification": "node services/notification-service/index.js",
+    "start:registry": "node services/registry-service/index.js"
+  },
+  "keywords": [
+    "soa",
+    "service-oriented-architecture",
+    "microservices",
+    "emergency-coordination",
+    "gdacs",
+    "disaster-response",
+    "final-year-project"
+  ],
+  "author": "Antigravity Pair Programmer & Student",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "xml2js": "^0.6.2"
+  }
+}

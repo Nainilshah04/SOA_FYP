@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Public Advisory Gateway | BMC Disaster Management - K-West Ward</title>
+  <link rel="stylesheet" href="/shared/styles/command-center.css">
+  <style>
+    .channels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.15rem;
+    }
+    .channel-card {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.15s ease;
+    }
+    .channel-card.committed {
+      border-left: 4px solid var(--status-emerald);
+      background: #fbfdfc;
+    }
+    .bulletin-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .commit-form-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .commit-input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+    .commit-input-group label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+    .commit-input-group input {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      outline: none;
+    }
+    .commit-input-group input:focus {
+      border-color: var(--brand-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Cross-Service Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrapper">
+      <div class="brand-badge">PORT 5004</div>
+      <div class="brand-text">
+        <h1>BMC Disaster Citizen Advisory &amp; Warning Gateway</h1>
+        <p>K-West Ward (Vile Parle West &amp; Juhu) · CAP v1.2 Protocol · Cellular Geo-Cast</p>
+      </div>
+    </div>
+
+    <nav class="service-pills">
+      <a href="http://localhost:5000" class="nav-pill" title="Master Orchestrator">
+        <span>Orchestrator</span><span class="port-badge">5000</span>
+      </a>
+      <a href="http://localhost:5001" class="nav-pill" title="Hospital Emergency Service">
+        <span>Hospital</span><span class="port-badge">5001</span>
+      </a>
+      <a href="http://localhost:5002" class="nav-pill" title="Rescue & Resource Logistics">
+        <span>Resource</span><span class="port-badge">5002</span>
+      </a>
+      <a href="http://localhost:5003" class="nav-pill" title="Traffic & Safe Routing Police">
+        <span>Traffic</span><span class="port-badge">5003</span>
+      </a>
+      <a href="http://localhost:5004" class="nav-pill active" title="Public Advisory & Sirens">
+        <span>Notification</span><span class="port-badge">5004</span>
+      </a>
+      <a href="http://localhost:5005" class="nav-pill" title="Service Registry Hub">
+        <span>Registry</span><span class="port-badge">5005</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <a href="http://localhost:5000" class="btn btn-secondary btn-sm">
+        Return to Incident Command (5000)
+      </a>
+    </div>
+  </header>
+
+  <main class="page-container">
+
+    <!-- Active Requirement Notification Banner -->
+    <div id="incoming-req-banner" style="display: none; margin-bottom: 1.15rem;">
+      <div class="card" style="border-left: 4px solid var(--brand-primary); padding: 1.15rem; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span class="badge badge-blue">Incoming Demand Dispatched from Master</span>
+              <h3 style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary);" id="banner-incident-title">
+                Active Advisory &amp; Warning Requirement
+              </h3>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);" id="banner-incident-desc">
+              Requirement dispatched from Master Command. Trigger broadcast channels and siren towers below:
+            </p>
+          </div>
+          <div style="text-align: right;">
+            <span class="badge badge-orange" id="banner-remaining-badge" style="font-size: 0.76rem;">
+              Remaining Needed: 180,000 SMS · 16 Sirens
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); font-size: 0.76rem; font-family: var(--font-mono);">
+          <span>Citizens to Reach: <strong id="val-req-citizens" style="color: var(--text-primary);">180,000</strong></span>
+          <span>Sirens to Sound: <strong id="val-req-sirens" style="color: var(--text-primary);">16 Towers</strong></span>
+          <span>Delivered: <strong id="val-col-citizens" style="color: #166534;">0</strong></span>
+          <span>Remaining to Alert: <strong id="val-rem-citizens" style="color: #b91c1c;">180,000</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Overview Bar -->
+    <div class="control-bar">
+      <div class="control-bar-info">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="control-bar-text">
+          <h3 id="current-status-label">Broadcast Gateway: Monitoring Standby</h3>
+          <p>Jurisdiction: K-West Ward, Vile Parle (W), Juhu Beach &amp; Suburban Civil Defense Sirens.</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.4rem;">
+        <button class="btn btn-secondary btn-sm" onclick="resetNotification()">
+          Reset Standby State
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Total Citizens Alerted</span>
+          <span class="badge badge-blue">Geo-Fenced</span>
+        </div>
+        <div class="stat-value" id="stat-citizens" style="color: var(--brand-primary);">0 Citizens</div>
+        <div class="stat-meta">Vile Parle &amp; Juhu telecom cells</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Acoustic Sirens Active</span>
+          <span class="badge badge-red">130 dB Tone</span>
+        </div>
+        <div class="stat-value" id="stat-sirens" style="color: var(--status-red);">0 / 16 Sirens</div>
+        <div class="stat-meta">Vile Parle &amp; Juhu coastal towers</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">CAP Engine Protocol</span>
+          <span class="badge badge-green">v1.2 XML Feed</span>
+        </div>
+        <div class="stat-value" id="stat-cap">OASIS Compliant</div>
+        <div class="stat-meta">Inter-agency NDMA feed</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Incidents Handled</span>
+          <span class="badge badge-gray">K-West Ward</span>
+        </div>
+        <div class="stat-value" id="stat-handled">0 Events</div>
+        <div class="stat-meta">Coordinated with BMC Command</div>
+      </div>
+    </div>
+
+    <!-- Active Emergency Bulletins (English & Marathi) -->
+    <div class="card" style="margin-bottom: 1.15rem;">
+      <div class="card-header">
+        <h3 class="card-title">Live Bilingual Emergency Citizen Bulletins</h3>
+        <span class="badge badge-blue">K-West Municipal Feed</span>
+      </div>
+      <div style="padding: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div class="bulletin-box">
+          <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+            Official English Advisory (SMS &amp; Media Crawl)
+          </div>
+          <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);" id="bulletin-en">
+            All systems quiet. Monitoring Mumbai meteorological and coastal tidal gauges.
+          </div>
+        </div>
+
+        <div class="bulletin-box" style="background: #fafaf9; border-color: #e7e5e4;">
+          <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+            प्रादेशिक मराठी सूचना (Regional Marathi Advisory)
+          </div>
+          <div style="font-size: 0.88rem; font-weight: 600; color: var(--text-primary);" id="bulletin-mr">
+            सर्व यंत्रणा शांत आहेत. विलेपार्ले व जुहू परिसर हवामान निरीक्षण सुरू आहे.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Channels Grid with Dynamic Gateway Forms -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+          Autonomous Warning Channels (Decentralized Gateway Commitment)
+        </h3>
+        <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+          Enter dynamic transmission numbers for each warning channel to report live delivery to Master
+        </span>
+      </div>
+
+      <div class="channels-grid" id="channels-container">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Notification Coordination Logs -->
+    <div class="card" style="margin-top: 1.15rem;">
+      <div class="card-header">
+        <h3 class="card-title">Broadcast Gateway Transmission Audit Log</h3>
+        <span class="badge badge-gray">SSE Stream</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Event</th>
+              <th>Operational Details</th>
+              <th>Level</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    async function commitChannelDynamic(channelId) {
+      const citInput = document.getElementById(`input-citizens-${channelId}`);
+      const sirInput = document.getElementById(`input-sirens-${channelId}`);
+      const citizens = citInput ? parseInt(citInput.value, 10) : 0;
+      const sirens = sirInput ? parseInt(sirInput.value, 10) : 0;
+
+      if (!citizens && !sirens) {
+        alert('Please specify citizen reach or siren count to transmit.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/commit-channel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelId, citizens, sirens }),
+        });
+        const data = await res.json();
+      } catch (err) {
+        console.error('Channel commit error:', err);
+      }
+    }
+
+    async function resetNotification() {
+      try {
+        await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actionType: 'RESET' }),
+        });
+      } catch (err) {}
+    }
+
+    function renderState(state) {
+      // Status
+      document.getElementById('current-status-label').innerText = `Broadcast Gateway: ${state.broadcastStatus}`;
+      const statusDot = document.getElementById('status-dot');
+      if (state.broadcastStatus.includes('ACTIVE')) {
+        statusDot.className = 'status-dot red';
+      } else {
+        statusDot.className = 'status-dot';
+      }
+
+      // Stats
+      document.getElementById('stat-citizens').innerText = `${state.citizensReachedCount.toLocaleString()} Citizens`;
+      document.getElementById('stat-sirens').innerText = `${state.sirensActiveCount} / 16 Sirens`;
+      document.getElementById('stat-handled').innerText = `${state.activeIncidentsHandled} Events`;
+
+      // Bulletins
+      if (state.activeBulletins) {
+        document.getElementById('bulletin-en').innerText = state.activeBulletins.english || '';
+        document.getElementById('bulletin-mr').innerText = state.activeBulletins.regional || '';
+      }
+
+      // Incoming Requirement Banner
+      const banner = document.getElementById('incoming-req-banner');
+      if (state.activeRequirement) {
+        banner.style.display = 'block';
+        const req = state.activeRequirement;
+        document.getElementById('banner-incident-title').innerText = req.title;
+        document.getElementById('val-req-citizens').innerText = `${req.reachCitizensRequired.toLocaleString()}`;
+        document.getElementById('val-req-sirens').innerText = `${req.sirensRequired}`;
+        document.getElementById('val-col-citizens').innerText = `${req.citizensReached.toLocaleString()}`;
+        document.getElementById('val-rem-citizens').innerText = `${req.citizensRemaining.toLocaleString()}`;
+
+        const remBadge = document.getElementById('banner-remaining-badge');
+        if (req.citizensRemaining === 0 && req.sirensRemaining === 0) {
+          remBadge.className = 'badge badge-green';
+          remBadge.innerText = 'Requirement 100% Satisfied';
+        } else {
+          remBadge.className = 'badge badge-orange';
+          remBadge.innerText = `Remaining: ${req.citizensRemaining.toLocaleString()} Citizens · ${req.sirensRemaining} Sirens`;
+        }
+      } else {
+        banner.style.display = 'none';
+      }
+
+      // Channels Cards with Dynamic Commitment Forms
+      const container = document.getElementById('channels-container');
+      container.innerHTML = state.channels.map(ch => {
+        const hasCommitted = ch.contribution !== null;
+        const cardClass = hasCommitted ? 'channel-card committed' : 'channel-card';
+
+        let defaultCit = 95000;
+        let defaultSir = 0;
+        if (ch.id === 'CHANNEL-SIRENS-VILEPARLE') { defaultCit = 0; defaultSir = 8; }
+        if (ch.id === 'CHANNEL-SIRENS-JUHU') { defaultCit = 85000; defaultSir = 8; }
+
+        let actionArea = '';
+        if (hasCommitted) {
+          actionArea = `
+            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.76rem; color: #166534;">
+              <strong>Delivered Quota:</strong> ${ch.contribution.citizens > 0 ? ch.contribution.citizens.toLocaleString() + ' SMS ' : ''}${ch.contribution.sirens > 0 ? ch.contribution.sirens + ' Sirens' : ''}
+              <div style="font-size: 0.68rem; font-family: var(--font-mono); color: #15803d; margin-top: 2px;">
+                Timestamp: ${ch.contribution.timestamp}
+              </div>
+            </div>
+          `;
+        } else if (state.activeRequirement && state.activeRequirement.status !== 'COMMITTED' && ch.id !== 'CHANNEL-CAP') {
+          actionArea = `
+            <div class="commit-form-box">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">
+                Specify Broadcast Transmission for this Incident:
+              </div>
+              <div class="commit-input-row">
+                <div class="commit-input-group">
+                  <label for="input-citizens-${ch.id}">Citizens SMS:</label>
+                  <input type="number" id="input-citizens-${ch.id}" min="0" value="${defaultCit}">
+                </div>
+                <div class="commit-input-group">
+                  <label for="input-sirens-${ch.id}">Sirens to Sound:</label>
+                  <input type="number" id="input-sirens-${ch.id}" min="0" value="${defaultSir}">
+                </div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="width: 100%; margin-top: 4px;" onclick="commitChannelDynamic('${ch.id}')">
+                Transmit Broadcast Commitment to Master Command
+              </button>
+            </div>
+          `;
+        } else {
+          actionArea = `
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Status: Operational Standby. Awaiting emergency broadcast requirement from Master.
+            </div>
+          `;
+        }
+
+        return `
+          <div class="${cardClass}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">${ch.name}</h4>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">${ch.type}</div>
+              </div>
+              <span class="badge ${hasCommitted ? 'badge-green' : 'badge-gray'}">${hasCommitted ? 'Active' : 'Standby'}</span>
+            </div>
+
+            <div style="font-size: 0.74rem; color: var(--text-secondary); background: #f8fafc; padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+              <strong>Gateway Reliability:</strong> Success Rate ${ch.successRate}
+            </div>
+
+            ${actionArea}
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; border-top: 1px solid var(--border-subtle); padding-top: 0.45rem; font-family: var(--font-mono); color: var(--text-secondary);">
+              <span>ID: <code>${ch.id}</code></span>
+              <span>Type: Broadcast Gateway</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Logs table
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = state.coordinationLogs.map(log => `
+        <tr>
+          <td style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.72rem;">${log.timestamp}</td>
+          <td style="font-weight: 700; color: var(--text-primary); font-size: 0.76rem;">${log.event}</td>
+          <td style="color: var(--text-secondary); font-size: 0.74rem;">${log.details}</td>
+          <td><span class="badge ${log.level === 'SUCCESS' ? 'badge-green' : (log.level === 'ACTION' ? 'badge-orange' : 'badge-blue')}">${log.level}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    const evt = new EventSource('/api/events');
+    evt.onmessage = e => {
+      try { renderState(JSON.parse(e.data)); } catch (err) { console.error(err); }
+    };
+
+    fetch('/api/status').then(r => r.json()).then(d => {
+      if (d.success) renderState(d.data);
+    });
+  </script>
+</body>
+</html>

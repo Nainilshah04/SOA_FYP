@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hospital Emergency Operations | Municipal Healthcare Network</title>
+  <link rel="stylesheet" href="/shared/styles/command-center.css">
+  <style>
+    .hospital-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.15rem;
+    }
+    .facility-card {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.15s ease;
+    }
+    .facility-card.committed {
+      border-left: 4px solid var(--status-emerald);
+      background: #fbfdfc;
+    }
+    .commit-form-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .commit-input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+    .commit-input-group label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 3px;
+    }
+    .commit-input-group input {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      outline: none;
+    }
+    .commit-input-group input:focus {
+      border-color: var(--brand-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Cross-Service Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrapper">
+      <div class="brand-badge">PORT 5001</div>
+      <div class="brand-text">
+        <h1>Mumbai Suburban Emergency Hospital Network</h1>
+        <p>Trauma Care Dispatch · Dr. R. N. Cooper · Nanavati Max · Kokilaben Dhirubhai Ambani</p>
+      </div>
+    </div>
+
+    <nav class="service-pills">
+      <a href="http://localhost:5000" class="nav-pill" title="Master Orchestrator">
+        <span>Orchestrator</span><span class="port-badge">5000</span>
+      </a>
+      <a href="http://localhost:5001" class="nav-pill active" title="Hospital Emergency Service">
+        <span>Hospital</span><span class="port-badge">5001</span>
+      </a>
+      <a href="http://localhost:5002" class="nav-pill" title="Rescue & Resource Logistics">
+        <span>Resource</span><span class="port-badge">5002</span>
+      </a>
+      <a href="http://localhost:5003" class="nav-pill" title="Traffic & Safe Routing Police">
+        <span>Traffic</span><span class="port-badge">5003</span>
+      </a>
+      <a href="http://localhost:5004" class="nav-pill" title="Public Advisory & Sirens">
+        <span>Notification</span><span class="port-badge">5004</span>
+      </a>
+      <a href="http://localhost:5005" class="nav-pill" title="Service Registry Hub">
+        <span>Registry</span><span class="port-badge">5005</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <a href="http://localhost:5000" class="btn btn-secondary btn-sm">
+        Return to Incident Command (5000)
+      </a>
+    </div>
+  </header>
+
+  <main class="page-container">
+
+    <!-- Active Requirement Notification Banner -->
+    <div id="incoming-req-banner" style="display: none; margin-bottom: 1.15rem;">
+      <div class="card" style="border-left: 4px solid var(--brand-primary); padding: 1.15rem; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span class="badge badge-blue">Incoming Demand Dispatched from Master</span>
+              <h3 style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary);" id="banner-incident-title">
+                Active Incident Requirement
+              </h3>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);" id="banner-incident-desc">
+              Requirement dispatched from Master Command. Adjust and commit beds/ambulances for each facility below:
+            </p>
+          </div>
+          <div style="text-align: right;">
+            <span class="badge badge-orange" id="banner-remaining-badge" style="font-size: 0.76rem;">
+              Remaining Needed: 90 Beds
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); font-size: 0.76rem; font-family: var(--font-mono);">
+          <span>Total Required: <strong id="val-req-beds" style="color: var(--text-primary);">90 Beds</strong></span>
+          <span>Ambulances Needed: <strong id="val-req-ambs" style="color: var(--text-primary);">16 Units</strong></span>
+          <span>Total Committed: <strong id="val-col-beds" style="color: #166534;">0 Beds</strong></span>
+          <span>Remaining to Satisfy: <strong id="val-rem-beds" style="color: #b91c1c;">90 Beds</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Overview Bar -->
+    <div class="control-bar">
+      <div class="control-bar-info">
+        <div class="status-dot" id="triage-dot"></div>
+        <div class="control-bar-text">
+          <h3 id="current-triage-label">Hospital Clinical Status: Normal Standby</h3>
+          <p>Decentralized Facilities: Cooper Hospital (1.5 km), Nanavati Max (1.2 km), Kokilaben (4.2 km), Lilavati (7.5 km).</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.4rem;">
+        <button class="btn btn-secondary btn-sm" onclick="resetHospital()">
+          Reset Standby State
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Available Emergency Beds</span>
+          <span class="badge badge-green">Network Total</span>
+        </div>
+        <div class="stat-value" id="stat-beds" style="color: var(--brand-primary);">345 / 2,150</div>
+        <div class="stat-meta">Surge reserve capacity ready</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">ICU &amp; Critical Care Beds</span>
+          <span class="badge badge-blue">Ventilator Ready</span>
+        </div>
+        <div class="stat-value" id="stat-icu" style="color: #0284c7;">78 Available</div>
+        <div class="stat-meta">Across 4 suburban facilities</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Ambulances Deployed</span>
+          <span class="badge badge-gray">ALS / BLS Fleet</span>
+        </div>
+        <div class="stat-value" id="stat-ambulances">12 / 52</div>
+        <div class="stat-meta">Radio-linked to Vile Parle Command</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Emergency Blood Reserve</span>
+          <span class="badge badge-red">O-Negative Ready</span>
+        </div>
+        <div class="stat-value" id="stat-blood" style="color: var(--status-red);">620 Units</div>
+        <div class="stat-meta">Cooper &amp; Nanavati Blood Banks</div>
+      </div>
+    </div>
+
+    <!-- Facilities Grid with Dynamic Commit Forms -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+          Autonomous Hospital Facilities (Decentralized Resource Commitment)
+        </h3>
+        <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+          Enter dynamic allocation numbers for each facility to revert live capacity to Master
+        </span>
+      </div>
+
+      <div class="hospital-grid" id="facilities-container">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Hospital Coordination Logs -->
+    <div class="card" style="margin-top: 1.15rem;">
+      <div class="card-header">
+        <h3 class="card-title">Hospital Coordination &amp; Commitment Audit Log</h3>
+        <span class="badge badge-gray">SSE Stream</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Event</th>
+              <th>Operational Details</th>
+              <th>Level</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    async function commitFacilityDynamic(facilityId) {
+      const bedsInput = document.getElementById(`input-beds-${facilityId}`);
+      const ambsInput = document.getElementById(`input-ambs-${facilityId}`);
+      const beds = bedsInput ? parseInt(bedsInput.value, 10) : 0;
+      const ambulances = ambsInput ? parseInt(ambsInput.value, 10) : 0;
+
+      if (!beds && !ambulances) {
+        alert('Please enter at least 1 bed or ambulance to commit.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/commit-facility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ facilityId, beds, ambulances }),
+        });
+        const data = await res.json();
+      } catch (err) {
+        console.error('Commit error:', err);
+      }
+    }
+
+    async function resetHospital() {
+      try {
+        await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actionType: 'RESET' }),
+        });
+      } catch (err) {}
+    }
+
+    function renderState(state) {
+      // Triage Label
+      const triageLabel = document.getElementById('current-triage-label');
+      const triageDot = document.getElementById('triage-dot');
+      triageLabel.innerText = `Hospital Clinical Status: ${state.triageLevel}`;
+
+      if (state.triageLevel.includes('RED')) {
+        triageDot.className = 'status-dot red';
+      } else if (state.triageLevel.includes('YELLOW')) {
+        triageDot.className = 'status-dot amber';
+      } else {
+        triageDot.className = 'status-dot';
+      }
+
+      // Stats
+      document.getElementById('stat-beds').innerText = `${state.availableBeds} / ${state.totalBeds}`;
+      document.getElementById('stat-icu').innerText = `${state.icuAvailable} Available`;
+      document.getElementById('stat-ambulances').innerText = `${state.ambulancesDeployed} / ${state.ambulancesTotal}`;
+      document.getElementById('stat-blood').innerText = `${state.bloodReserveUnits} Units`;
+
+      // Incoming Requirement Banner
+      const banner = document.getElementById('incoming-req-banner');
+      if (state.activeRequirement) {
+        banner.style.display = 'block';
+        const req = state.activeRequirement;
+        document.getElementById('banner-incident-title').innerText = req.title;
+        document.getElementById('val-req-beds').innerText = `${req.bedsRequired} Beds`;
+        document.getElementById('val-req-ambs').innerText = `${req.ambulancesRequired} Ambulances`;
+        document.getElementById('val-col-beds').innerText = `${req.bedsCollected} Beds`;
+        document.getElementById('val-rem-beds').innerText = `${req.bedsRemaining} Beds`;
+
+        const remBadge = document.getElementById('banner-remaining-badge');
+        if (req.bedsRemaining === 0) {
+          remBadge.className = 'badge badge-green';
+          remBadge.innerText = 'Requirement 100% Satisfied';
+        } else {
+          remBadge.className = 'badge badge-orange';
+          remBadge.innerText = `Remaining Needed: ${req.bedsRemaining} Beds`;
+        }
+      } else {
+        banner.style.display = 'none';
+      }
+
+      // Facilities Cards with Dynamic Input Forms
+      const facContainer = document.getElementById('facilities-container');
+      facContainer.innerHTML = state.facilities.map(f => {
+        const hasCommitted = f.contribution !== null;
+        const cardClass = hasCommitted ? 'facility-card committed' : 'facility-card';
+
+        // Suggest remaining quota or standard default
+        let defaultBeds = 25;
+        if (f.id === 'HOSP-COOPER') defaultBeds = 40;
+        if (f.id === 'HOSP-NANAVATI') defaultBeds = 35;
+        if (f.id === 'HOSP-KOKILABEN') defaultBeds = 15;
+        if (f.id === 'HOSP-LILAVATI') defaultBeds = 10;
+
+        let defaultAmbs = 6;
+        if (f.id === 'HOSP-COOPER') defaultAmbs = 7;
+        if (f.id === 'HOSP-NANAVATI') defaultAmbs = 6;
+        if (f.id === 'HOSP-KOKILABEN') defaultAmbs = 3;
+
+        let actionArea = '';
+        if (hasCommitted) {
+          actionArea = `
+            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.76rem; color: #166534;">
+              <strong>Committed Quota:</strong> ${f.contribution.beds} Beds · ${f.contribution.ambulances} Ambulances
+              <div style="font-size: 0.68rem; font-family: var(--font-mono); color: #15803d; margin-top: 2px;">
+                Timestamp: ${f.contribution.timestamp}
+              </div>
+            </div>
+          `;
+        } else if (state.activeRequirement && state.activeRequirement.status !== 'COMMITTED') {
+          actionArea = `
+            <div class="commit-form-box">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary); margin-bottom: 2px;">
+                Specify Resource Commitment for this Incident:
+              </div>
+              <div class="commit-input-row">
+                <div class="commit-input-group">
+                  <label for="input-beds-${f.id}">Beds to Commit:</label>
+                  <input type="number" id="input-beds-${f.id}" min="1" max="${f.availableBeds}" value="${defaultBeds}">
+                </div>
+                <div class="commit-input-group">
+                  <label for="input-ambs-${f.id}">Ambulances:</label>
+                  <input type="number" id="input-ambs-${f.id}" min="0" max="${f.ambulances}" value="${defaultAmbs}">
+                </div>
+              </div>
+              <button class="btn btn-primary btn-sm" style="width: 100%; margin-top: 4px;" onclick="commitFacilityDynamic('${f.id}')">
+                Transmit Commitment to Master Command
+              </button>
+            </div>
+          `;
+        } else {
+          actionArea = `
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Status: Ready on Standby. Awaiting emergency requirement dispatch from Master.
+            </div>
+          `;
+        }
+
+        return `
+          <div class="${cardClass}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">${f.name}</h4>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">${f.location}</div>
+              </div>
+              <span class="badge ${hasCommitted ? 'badge-green' : 'badge-gray'}">${hasCommitted ? 'Committed' : 'Standby'}</span>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-secondary);">
+              <span class="badge badge-gray" style="font-size: 0.68rem;">Surge Limit: ${f.maxSurgeLimit} Beds</span>
+              <span>Anti-Overcrowding Threshold</span>
+            </div>
+
+            ${actionArea}
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; border-top: 1px solid var(--border-subtle); padding-top: 0.5rem; color: var(--text-secondary);">
+              <span>Vacant Beds: <strong style="color: var(--text-primary);">${f.availableBeds}</strong></span>
+              <span>ICU Available: <strong style="color: var(--text-primary);">${f.icuAvailable}</strong></span>
+              <span>Ambulances: <strong style="color: var(--text-primary);">${f.ambulances}</strong></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Logs table
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = state.coordinationLogs.map(log => `
+        <tr>
+          <td style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.72rem;">${log.timestamp}</td>
+          <td style="font-weight: 700; color: var(--text-primary); font-size: 0.76rem;">${log.event}</td>
+          <td style="color: var(--text-secondary); font-size: 0.74rem;">${log.details}</td>
+          <td><span class="badge ${log.level === 'SUCCESS' ? 'badge-green' : (log.level === 'ACTION' ? 'badge-orange' : 'badge-blue')}">${log.level}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    const evt = new EventSource('/api/events');
+    evt.onmessage = e => {
+      try { renderState(JSON.parse(e.data)); } catch (err) { console.error(err); }
+    };
+
+    fetch('/api/status').then(r => r.json()).then(d => {
+      if (d.success) renderState(d.data);
+    });
+  </script>
+</body>
+</html>

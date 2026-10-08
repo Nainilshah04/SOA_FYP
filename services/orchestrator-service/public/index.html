@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Incident Command Center | Mumbai Emergency Operations - DJSCE Ground Zero</title>
+  <link rel="stylesheet" href="/shared/styles/command-center.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    .tally-card {
+      background: #ffffff;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem 1.25rem;
+      margin-top: 0.85rem;
+      box-shadow: var(--shadow-sm);
+    }
+    .tally-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      margin-top: 0.5rem;
+    }
+    .tally-table th {
+      text-align: left;
+      padding: 0.45rem 0.65rem;
+      background: #f8fafc;
+      color: var(--text-secondary);
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-medium);
+    }
+    .tally-table td {
+      padding: 0.45rem 0.65rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .absorption-chain-box {
+      display: flex;
+      gap: 0.65rem;
+      margin-top: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .absorption-step-chip {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.74rem;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .absorption-step-chip.active {
+      background: #f0fdf4;
+      border-color: #86efac;
+      color: #166534;
+      font-weight: 700;
+    }
+    .triage-pills-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.4rem;
+      flex-wrap: wrap;
+    }
+    .triage-pill-red {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      padding: 0.25rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .triage-pill-yellow {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+      padding: 0.25rem 0.55rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+    .research-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .paper-card {
+      background: #ffffff;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .paper-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: #1e3a8a;
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    /* Enhanced Leaflet Map Pins & Municipal Legend */
+    .custom-facility-marker {
+      background: transparent !important;
+      border: none !important;
+    }
+    .marker-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+      transform: translate(-13px, -16px);
+      transition: transform 0.15s ease;
+    }
+    .marker-card:hover {
+      transform: translate(-13px, -18px) scale(1.05);
+      z-index: 9999 !important;
+    }
+    .marker-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8.5px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      border: 1.5px solid #ffffff;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    .marker-info {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 2px 7px;
+      line-height: 1.25;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+    .marker-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .marker-desc {
+      font-size: 8.5px;
+      font-family: var(--font-mono);
+      color: #475569;
+    }
+    .marker-hazard-pulse .marker-badge {
+      animation: hazard-pulse 1.8s infinite;
+    }
+    @keyframes hazard-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+      70% { box-shadow: 0 0 0 9px rgba(220, 38, 38, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+    }
+    .map-legend-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding: 0.5rem 0.85rem;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      align-items: center;
+    }
+    .map-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .legend-chip {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid #ffffff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .legend-line {
+      display: inline-block;
+      width: 18px;
+      height: 3px;
+      border-top: 2px dashed #16a34a;
+    }
+
+    @media print {
+      body * { visibility: hidden; }
+      #factsheet-printable, #factsheet-printable * { visibility: visible; }
+      #factsheet-printable { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Cross-Service Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrapper">
+      <div class="brand-badge">HQ-00 · COMMAND</div>
+      <div class="brand-text">
+        <h1>Mumbai Emergency Operations Center</h1>
+        <p>D.J. Sanghvi College of Engineering Incident Command · Vile Parle (West) · Port 5000</p>
+      </div>
+    </div>
+
+    <nav class="service-pills">
+      <a href="http://localhost:5000" class="nav-pill active" title="Master Orchestrator">
+        <span>Orchestrator</span><span class="port-badge">5000</span>
+      </a>
+      <a href="http://localhost:5001" class="nav-pill" title="Hospital Emergency Service">
+        <span>Hospital</span><span class="port-badge">5001</span>
+      </a>
+      <a href="http://localhost:5002" class="nav-pill" title="Rescue & Resource Logistics">
+        <span>Resource</span><span class="port-badge">5002</span>
+      </a>
+      <a href="http://localhost:5003" class="nav-pill" title="Traffic & Safe Routing Police">
+        <span>Traffic</span><span class="port-badge">5003</span>
+      </a>
+      <a href="http://localhost:5004" class="nav-pill" title="Public Advisory & Sirens">
+        <span>Notification</span><span class="port-badge">5004</span>
+      </a>
+      <a href="http://localhost:5005" class="nav-pill" title="Service Registry Hub">
+        <span>Registry</span><span class="port-badge">5005</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openResearchModal()" title="View IEEE & Springer Research Foundations">
+        Research Basis
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="openFactsheetModal()" title="Export Incident Factsheet">
+        Incident Factsheet
+      </button>
+      <button class="btn btn-secondary btn-sm" onclick="inspectContract('/api/contract')">
+        OpenAPI 3.0
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openAllDashboards()">
+        Launch All Service Windows
+      </button>
+    </div>
+  </header>
+
+  <main class="page-container">
+
+    <!-- Incident Scenario Selection Bar -->
+    <div class="control-bar">
+      <div class="control-bar-info">
+        <div class="status-dot"></div>
+        <div class="control-bar-text">
+          <h3>Mumbai Suburban Emergency Incident Scenarios</h3>
+          <p>Ground Zero: D.J. Sanghvi College of Engineering (19.1075° N, 72.8372° E). Select a scenario to begin two-phase inquiry and dispatch:</p>
+        </div>
+      </div>
+      <div class="scenario-buttons">
+        <button class="btn btn-primary btn-sm" onclick="selectScenario('SCENARIO-DJSCE-MONSOON-BURST')">
+          [FLOOD] Vile Parle &amp; Milan Subway Cloudburst
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="selectScenario('SCENARIO-JUHU-CYCLONE-TAUKTAE')">
+          [CYCLONE] Juhu Beach Severe Cyclone
+        </button>
+        <button class="btn btn-warning btn-sm" onclick="selectScenario('SCENARIO-ANDHERI-MIDC-GAS')">
+          [HAZMAT] MIDC Andheri Chemical Gas Leak
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="resetAll()">
+          Reset System
+        </button>
+      </div>
+    </div>
+
+    <!-- Phase 1: Inquire & Capacity Tally Card -->
+    <div id="inquiry-phase-box" style="display: none;">
+      <div class="tally-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span class="badge badge-blue">Phase 1: Capacity Discovery</span>
+              <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary);" id="tally-scenario-title">
+                Incident Ground Zero Selected
+              </h3>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);">
+              Surveying live network availability across Cooper, Nanavati, Fire Brigades, and Subways before dispatching requirements:
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 0.4rem; align-items: center;">
+            <button class="btn btn-primary btn-sm" id="btn-inquire-step" onclick="executeInquirePhase()">
+              Step 1: Inquire Live Availability
+            </button>
+            <button class="btn btn-success btn-sm" id="btn-deploy-step" onclick="executeDeployPhase()">
+              Step 2: Dispatch Requirements to Services
+            </button>
+          </div>
+        </div>
+
+        <!-- Tally Comparison Table -->
+        <table class="tally-table" id="tally-table">
+          <thead>
+            <tr>
+              <th>Municipal Resource</th>
+              <th>Disaster Demand</th>
+              <th>Live Network Available</th>
+              <th>Surplus / Deficit</th>
+              <th>Feasibility Check</th>
+            </tr>
+          </thead>
+          <tbody id="tally-table-body">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.65rem; font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted);">
+          <span>Protocol: Two-Phase Inquiry (FIPA Contract Net / NDMA Framework)</span>
+          <span style="color: #166534; font-weight: 700;" id="tally-feasibility-note">Live inventory query ready. Click "Step 1" or "Step 2".</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Incident Operational Requirement Banner -->
+    <div id="active-incident-box" style="display: none; margin-top: 0.85rem;">
+      <div class="active-incident-banner">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span class="badge badge-red" id="inc-alert-badge">Red Alert</span>
+              <h2 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary);" id="inc-title">Mumbai Cloudburst Inundation</h2>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);" id="inc-desc">
+              Incident Ground Zero: D.J. Sanghvi College of Engineering / Vile Parle (W). Subways submerged.
+            </p>
+
+            <!-- START Triage Badges -->
+            <div class="triage-pills-row">
+              <span class="triage-pill-red" id="chip-t1-count">T1 Immediate (Trauma / ICU): 40 Patients (1:1 ALS Amb)</span>
+              <span class="triage-pill-yellow" id="chip-t2-count">T2 Delayed (Inundation Ward): 50 Patients (Step-Down)</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span class="badge badge-blue" id="inc-status-badge">Phase 2: Awaiting Domain Services</span>
+            <button class="btn btn-secondary btn-sm" onclick="openFactsheetModal()">
+              Incident Factsheet
+            </button>
+          </div>
+        </div>
+
+        <!-- Calculated Emergency Demand Chips -->
+        <div class="req-chips-container">
+          <div class="req-chip">
+            <span>Hospital Demand:</span>
+            <strong id="chip-hosp-demand">90 Beds · 16 Ambulances (Cooper &amp; Nanavati)</strong>
+          </div>
+          <div class="req-chip">
+            <span>Rescue Demand:</span>
+            <strong id="chip-res-demand">14 Boats · 22 Pumps · Vile Parle Fire Station</strong>
+          </div>
+          <div class="req-chip">
+            <span>Traffic Demand:</span>
+            <strong id="chip-traf-demand">Milan Subway Cordoned · WEH Green Corridor</strong>
+          </div>
+          <div class="req-chip">
+            <span>Public Notice:</span>
+            <strong id="chip-notif-demand">K-West Ward Broadcast · 16 Sirens</strong>
+          </div>
+        </div>
+
+        <!-- Dynamic Multi-Hospital Absorption Tracker -->
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0.75rem 1rem; margin-top: 0.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; font-family: var(--font-mono); font-weight: 700;">
+            <span>Multi-Hospital Absorption Chain (Decentralized Live Responses):</span>
+            <span id="cumulative-remaining-badge" class="badge badge-orange">Remaining Needed: 90 Beds</span>
+          </div>
+
+          <div class="absorption-chain-box">
+            <div class="absorption-step-chip" id="chip-cooper">
+              <span>Cooper Hospital:</span>
+              <strong id="chip-cooper-status">Awaiting Response from :5001...</strong>
+            </div>
+            <div class="absorption-step-chip" id="chip-nanavati">
+              <span>Nanavati Max:</span>
+              <strong id="chip-nanavati-status">Awaiting Response from :5001...</strong>
+            </div>
+            <div class="absorption-step-chip" id="chip-kokilaben">
+              <span>Kokilaben:</span>
+              <strong id="chip-kokilaben-status">Awaiting Response from :5001...</strong>
+            </div>
+            <div class="absorption-step-chip" id="chip-lilavati" style="opacity: 0.7;">
+              <span>Lilavati Hospital:</span>
+              <strong>Standby Reserve</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE MULTI-SERVICE RESPONSE MATRIX (4 Autonomous Microservice Cards) -->
+    <div style="margin-top: 1.15rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+          Multi-Agency Operational Response Matrix
+        </h3>
+        <span style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">
+          Each microservice receives requirements &amp; responds from its own independent dashboard
+        </span>
+      </div>
+
+      <div class="service-response-grid">
+
+        <!-- Card 1: Hospital Emergency Service (:5001) -->
+        <div class="service-card" id="card-hospital">
+          <div class="service-card-header">
+            <div class="service-card-title">
+              Hospital Service
+            </div>
+            <span class="badge badge-gray" id="badge-hospital">Standby</span>
+          </div>
+          <div class="service-card-body">
+            <div class="service-card-stat">
+              <span>Coverage</span>
+              <strong>Cooper, Nanavati, Kokilaben</strong>
+            </div>
+            <div class="service-card-stat">
+              <span>Port / Protocol</span>
+              <code>:5001 / REST</code>
+            </div>
+            <div style="padding: 0.4rem 0; font-size: 0.74rem; color: var(--text-secondary);" id="details-hospital">
+              Autonomous trauma network on normal standby.
+            </div>
+          </div>
+          <div class="service-card-footer">
+            <a href="http://localhost:5001" target="_blank" style="color: var(--brand-primary); font-weight: 600; text-decoration: none;">
+              Open Hospital Dashboard (:5001)
+            </a>
+            <span id="time-hospital" style="color: var(--text-muted); font-family: var(--font-mono);">--</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Rescue & Logistics Service (:5002) -->
+        <div class="service-card" id="card-resource">
+          <div class="service-card-header">
+            <div class="service-card-title">
+              Rescue Service
+            </div>
+            <span class="badge badge-gray" id="badge-resource">Standby</span>
+          </div>
+          <div class="service-card-body">
+            <div class="service-card-stat">
+              <span>Coverage</span>
+              <strong>Vile Parle Fire, Juhu Marine</strong>
+            </div>
+            <div class="service-card-stat">
+              <span>Port / Protocol</span>
+              <code>:5002 / REST</code>
+            </div>
+            <div style="padding: 0.4rem 0; font-size: 0.74rem; color: var(--text-secondary);" id="details-resource">
+              Depot inventory &amp; swift-water teams ready.
+            </div>
+          </div>
+          <div class="service-card-footer">
+            <a href="http://localhost:5002" target="_blank" style="color: var(--brand-primary); font-weight: 600; text-decoration: none;">
+              Open Rescue Dashboard (:5002)
+            </a>
+            <span id="time-resource" style="color: var(--text-muted); font-family: var(--font-mono);">--</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Traffic & Safe Routing Service (:5003) -->
+        <div class="service-card" id="card-traffic">
+          <div class="service-card-header">
+            <div class="service-card-title">
+              Traffic Service
+            </div>
+            <span class="badge badge-gray" id="badge-traffic">Standby</span>
+          </div>
+          <div class="service-card-body">
+            <div class="service-card-stat">
+              <span>Coverage</span>
+              <strong>Milan Subway, WEH, SV Road</strong>
+            </div>
+            <div class="service-card-stat">
+              <span>Port / Protocol</span>
+              <code>:5003 / REST</code>
+            </div>
+            <div style="padding: 0.4rem 0; font-size: 0.74rem; color: var(--text-secondary);" id="details-traffic">
+              Traffic control &amp; subway sensors active.
+            </div>
+          </div>
+          <div class="service-card-footer">
+            <a href="http://localhost:5003" target="_blank" style="color: var(--brand-primary); font-weight: 600; text-decoration: none;">
+              Open Traffic Dashboard (:5003)
+            </a>
+            <span id="time-traffic" style="color: var(--text-muted); font-family: var(--font-mono);">--</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Public Notification & Advisory Service (:5004) -->
+        <div class="service-card" id="card-notification">
+          <div class="service-card-header">
+            <div class="service-card-title">
+              Notification Service
+            </div>
+            <span class="badge badge-gray" id="badge-notification">Standby</span>
+          </div>
+          <div class="service-card-body">
+            <div class="service-card-stat">
+              <span>Coverage</span>
+              <strong>K-West Ward Broadcast</strong>
+            </div>
+            <div class="service-card-stat">
+              <span>Port / Protocol</span>
+              <code>:5004 / CAP v1.2</code>
+            </div>
+            <div style="padding: 0.4rem 0; font-size: 0.74rem; color: var(--text-secondary);" id="details-notification">
+              CAP v1.2 engine &amp; siren grid armed.
+            </div>
+          </div>
+          <div class="service-card-footer">
+            <a href="http://localhost:5004" target="_blank" style="color: var(--brand-primary); font-weight: 600; text-decoration: none;">
+              Open Notification Dashboard (:5004)
+            </a>
+            <span id="time-notification" style="color: var(--text-muted); font-family: var(--font-mono);">--</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- GIS Map & Real-time Live Audit Logs -->
+    <div class="dashboard-grid">
+      <!-- GIS Map centered at D.J. Sanghvi College of Engineering -->
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card-header" style="padding: 0.85rem 1.15rem; margin-bottom: 0;">
+          <div>
+            <h3 class="card-title">Mumbai Suburban Emergency GIS Map (DJSCE Sector)</h3>
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
+              Ground Zero: 19.1075° N, 72.8372° E · Vile Parle / Juhu / Andheri Suburban Grid
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.45rem; align-items: center;">
+            <button class="btn btn-secondary btn-sm" onclick="recenterSectorMap()" title="Fit bounds to sector facilities">
+              Recenter Sector
+            </button>
+            <span class="badge badge-green" id="map-live-badge">Sensor Grid Active</span>
+          </div>
+        </div>
+
+        <!-- Visual Map Legend Strip -->
+        <div class="map-legend-strip">
+          <div class="map-legend-item">
+            <span class="legend-chip" style="background: #1e3a8a;"></span>
+            <span><strong>HQ</strong> DJSCE Ground Zero</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="legend-chip" style="background: #2563eb;"></span>
+            <span><strong>MED</strong> Cooper, Nanavati, Kokilaben</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="legend-chip" style="background: #d97706;"></span>
+            <span><strong>FIRE</strong> Rescue Units</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="legend-chip" style="background: #dc2626;"></span>
+            <span><strong>CORDON</strong> Hazard Subways</span>
+          </div>
+          <div class="map-legend-item">
+            <span class="legend-line"></span>
+            <span><strong>CORRIDOR</strong> Ambulance Priority</span>
+          </div>
+        </div>
+
+        <div id="map-container" style="height: 400px; width: 100%;"></div>
+      </div>
+
+      <!-- Live Master Coordination Logs -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Incident Command Real-time Audit Trail</h3>
+          <span class="badge badge-gray">SSE Stream</span>
+        </div>
+        <div style="overflow-x: auto; max-height: 380px;">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Event</th>
+                <th>Details</th>
+                <th>Level</th>
+              </tr>
+            </thead>
+            <tbody id="logs-table-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historical Incidents Summary Table -->
+    <div class="card" style="margin-top: 1.15rem;">
+      <div class="card-header">
+        <h3 class="card-title">Coordinated Incidents Repository</h3>
+        <span class="badge badge-green">Audit Trail</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Incident ID &amp; Time</th>
+              <th>Title &amp; Location</th>
+              <th>Severity</th>
+              <th>Multi-Agency Response Summary</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="incidents-table-body">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                No coordinated incidents recorded in this session. Select a scenario above to test!
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal 1: Research & Literature Basis Modal -->
+  <div id="research-modal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Theoretical &amp; Architectural Research Foundations</h3>
+        <button class="modal-close-btn" onclick="closeResearchModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.85rem;">
+          The architecture, loose-coupling, and Web-GIS user experience of <strong>ResilientResponse</strong> are grounded in four peer-reviewed foundational research papers:
+        </p>
+
+        <div class="research-grid">
+          <div class="paper-card">
+            <div style="display: flex; gap: 0.65rem; align-items: center;">
+              <span class="paper-badge">SWE</span>
+              <div>
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">Towards multi-agency sensor information integration for disaster management (2025)</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">ScienceDirect · OGC Sensor Web Enablement Standards</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+              Proposes harmonizing heterogeneous, multi-agency sensor feeds into a single interoperable data layer using OGC SWE standards.
+            </p>
+            <div style="background: #eff6ff; border-left: 3px solid #2563eb; padding: 0.4rem 0.6rem; font-size: 0.72rem; color: #1e40af; font-weight: 600;">
+              Validates our approach to integrating live map, subway water gauges, and GDACS feeds into one unified stream.
+            </div>
+          </div>
+
+          <div class="paper-card">
+            <div style="display: flex; gap: 0.65rem; align-items: center;">
+              <span class="paper-badge" style="background: #0284c7;">GIS</span>
+              <div>
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">Designing interactive Web-GIS dashboards for data driven Emergency Management (2024)</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">Springer · Interactive Web-GIS Dashboards for Smart Cities</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+              Shows that applying UI/UX heuristics measurably reduces operator cognitive load during high-pressure emergency decision-making.
+            </p>
+            <div style="background: #eff6ff; border-left: 3px solid #0284c7; padding: 0.4rem 0.6rem; font-size: 0.72rem; color: #0369a1; font-weight: 600;">
+              Informs the clean municipal layout and low information density of our Incident Command Center.
+            </div>
+          </div>
+
+          <div class="paper-card">
+            <div style="display: flex; gap: 0.65rem; align-items: center;">
+              <span class="paper-badge" style="background: #0f766e;">OPT</span>
+              <div>
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">Integrated optimization of facility location, casualty allocation and staff planning (2024)</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">Springer · Stochastic Facility &amp; Staff Planning (Markov Chains)</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+              Multi-period Markov Chain modeling of shifting patient health states shows static, one-time plans significantly underperform against evolving ground conditions.
+            </p>
+            <div style="background: #f0fdf4; border-left: 3px solid #16a34a; padding: 0.4rem 0.6rem; font-size: 0.72rem; color: #166534; font-weight: 600;">
+              Justifies why ResilientResponse dynamically allows independent services to commit real-time capacities instead of computing one fixed static plan.
+            </div>
+          </div>
+
+          <div class="paper-card">
+            <div style="display: flex; gap: 0.65rem; align-items: center;">
+              <span class="paper-badge" style="background: #b91c1c;">IEEE</span>
+              <div>
+                <strong style="font-size: 0.84rem; color: var(--text-primary);">Challenges and obstacles in sharing and coordinating information during disaster response (2025)</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">IEEE · Multi-Agency Information-Sharing Obstacles</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+              Empirical evidence that organizational silos and cross-department information friction repeatedly hamper emergency response.
+            </p>
+            <div style="background: #fef2f2; border-left: 3px solid #dc2626; padding: 0.4rem 0.6rem; font-size: 0.72rem; color: #991b1b; font-weight: 600;">
+              Justifies SOA loose-coupling via standardized REST/OpenAPI contracts across Hospital, Police, and Rescue services.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeResearchModal()">Close Window</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Printable Incident Operations Factsheet Modal -->
+  <div id="factsheet-modal" class="modal-backdrop">
+    <div class="modal-dialog" style="max-width: 820px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Incident Action Plan (IAP) Factsheet — Municipal Operations Audit</h3>
+        <button class="modal-close-btn" onclick="closeFactsheetModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="factsheet-printable">
+        <div style="border: 2px solid #1e3a8a; border-radius: 4px; padding: 1.25rem; background: #ffffff;">
+          <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <div style="font-size: 0.68rem; font-weight: 800; color: #1e3a8a; letter-spacing: 0.05em; text-transform: uppercase;">MUNICIPAL CORPORATION OF GREATER MUMBAI (MCGM)</div>
+              <h2 style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 2px 0;">INCIDENT COORDINATION ACTION FACTSHEET</h2>
+              <div style="font-size: 0.74rem; color: #64748b; font-family: var(--font-mono);">Incident Ground Zero: D.J. Sanghvi College of Engineering Sector (19.1075° N, 72.8372° E)</div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge badge-green" style="font-size: 0.8rem;">FORM IAP-201</span>
+              <div style="font-size: 0.7rem; font-family: var(--font-mono); color: #64748b; margin-top: 4px;" id="factsheet-date">Date: 2026-10-08</div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; font-size: 0.76rem; margin-bottom: 1rem;">
+            <div>
+              <strong>Incident Title:</strong> <span id="factsheet-title">Mumbai Cloudburst Inundation</span><br>
+              <strong>Disaster Classification:</strong> <span id="factsheet-type">Flash Flood / Cloudburst (Red Alert)</span><br>
+              <strong>Impact Population:</strong> <span id="factsheet-pop">240,000 citizens in K-West Ward</span>
+            </div>
+            <div>
+              <strong>Coordination Execution Time:</strong> <span id="factsheet-time" style="font-weight: 700; color: #166534;">Dynamic</span><br>
+              <strong>Architecture Pattern:</strong> Two-Phase Inquiry + Decentralized Dynamic Allocation<br>
+              <strong>Resilience State:</strong> 100% High Availability (All Services Committed)
+            </div>
+          </div>
+
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 0.5rem;">
+            START Triage Casualty Allocation &amp; Overcrowding Prevention
+          </h4>
+          <table class="tally-table" style="margin-bottom: 1rem;">
+            <thead>
+              <tr>
+                <th>Hospital Facility</th>
+                <th>Distance</th>
+                <th>Dynamic Quota Committed</th>
+                <th>Overcrowding Threshold</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Dr. R. N. Cooper Hospital</strong></td>
+                <td>1.5 km</td>
+                <td><span id="factsheet-cooper">Committed dynamically via Port 5001</span></td>
+                <td><span class="badge badge-green">Surge Limit: 50 Beds</span></td>
+              </tr>
+              <tr>
+                <td><strong>Nanavati Max Hospital</strong></td>
+                <td>1.2 km</td>
+                <td><span id="factsheet-nanavati">Committed dynamically via Port 5001</span></td>
+                <td><span class="badge badge-green">Surge Limit: 45 Beds</span></td>
+              </tr>
+              <tr>
+                <td><strong>Kokilaben Dhirubhai Ambani Hospital</strong></td>
+                <td>4.2 km</td>
+                <td><span id="factsheet-kokilaben">Committed dynamically via Port 5001</span></td>
+                <td><span class="badge badge-green">Surge Limit: 35 Beds</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: #1e3a8a; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; margin-bottom: 0.5rem;">
+            Multi-Agency Field Operations Status
+          </h4>
+          <div style="font-size: 0.74rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.65rem;">
+            <div style="background: #f8fafc; padding: 0.65rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+              <strong>Rescue Units (:5002):</strong><br>
+              • Vile Parle Fire Brigade<br>
+              • Juhu Marine Lifeguards<br>
+              • BMC K-West Logistics
+            </div>
+            <div style="background: #f8fafc; padding: 0.65rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+              <strong>Traffic Police (:5003):</strong><br>
+              • Milan Subway Checkpoint<br>
+              • Andheri Subway Checkpoint<br>
+              • WEH Green Corridor
+            </div>
+            <div style="background: #f8fafc; padding: 0.65rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+              <strong>Public Advisory (:5004):</strong><br>
+              • K-West Geo-Fenced SMS<br>
+              • Vile Parle Siren Tower<br>
+              • Juhu Coastal Siren Post
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary btn-sm" onclick="window.print()">Print Factsheet (PDF)</button>
+        <button class="btn btn-secondary btn-sm" onclick="closeFactsheetModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: OpenAPI Contract Modal -->
+  <div id="contract-modal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">OpenAPI 3.0 Contract Specification</h3>
+        <button class="modal-close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="contract-content" style="font-size: 0.72rem; line-height: 1.4; background: #f8fafc; padding: 1rem; border-radius: var(--radius-sm); max-height: 450px; overflow-y: auto;"></pre>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close Window</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map = null;
+    let markersLayer = null;
+    let currentIncidentOverlayLayers = [];
+    let selectedScenarioData = null;
+    let currentIncidentData = null;
+
+    const FACILITIES_DATA = [
+      {
+        id: 'FAC-DJSCE',
+        code: 'HQ',
+        title: 'DJSCE Ground Zero HQ',
+        desc: 'Incident Command · 19.1075° N, 72.8372° E',
+        coords: [19.1075, 72.8372],
+        color: '#1e3a8a',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #1e3a8a;">Incident Ground Zero Command Center</strong><br>
+            <strong>D.J. Sanghvi College of Engineering, Vile Parle (W)</strong><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">19.1075° N · 72.8372° E · Vile Parle West</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #eff6ff; border-left: 3px solid #1e3a8a; font-size: 0.72rem;">
+              Role: Master Orchestrator (Port 5000) · Real-Time Incident Operations
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-COOPER',
+        code: 'MED',
+        title: 'Dr. R. N. Cooper Hospital',
+        desc: '1.5 km · 95 Beds · Major Trauma',
+        coords: [19.1042, 72.8375],
+        color: '#2563eb',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #2563eb;">Dr. R. N. Cooper Municipal Hospital</strong><br>
+            <span>Juhu / Vile Parle (W) · 1.5 km from Ground Zero</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Capacity: 95 Available Beds · 24 ICU · 16 ALS Ambulances</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #eff6ff; border-left: 3px solid #2563eb; font-size: 0.72rem;">
+              Service Node: Port 5001 · Primary START Triage Destination
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-NANAVATI',
+        code: 'MED',
+        title: 'Nanavati Max Hospital',
+        desc: '1.2 km · 75 Beds · Burn & ICU',
+        coords: [19.0980, 72.8420],
+        color: '#2563eb',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #2563eb;">Nanavati Max Super Speciality Hospital</strong><br>
+            <span>SV Road, Vile Parle (W) · 1.2 km from Ground Zero</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Capacity: 75 Available Beds · 18 ICU · 12 Ambulances</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #eff6ff; border-left: 3px solid #2563eb; font-size: 0.72rem;">
+              Service Node: Port 5001 · Emergency Green Corridor Connected
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-KOKILABEN',
+        code: 'MED',
+        title: 'Kokilaben Dhirubhai Ambani Hospital',
+        desc: '4.2 km · 120 Beds · Multi-Specialty',
+        coords: [19.1310, 72.8250],
+        color: '#2563eb',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #2563eb;">Kokilaben Dhirubhai Ambani Hospital</strong><br>
+            <span>Four Bungalows, Andheri (W) · 4.2 km from Ground Zero</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Capacity: 120 Available Beds · 36 ICU · 18 Ambulances</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #eff6ff; border-left: 3px solid #2563eb; font-size: 0.72rem;">
+              Service Node: Port 5001 · Surge Reserve Trauma Center
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-FIRE-VP',
+        code: 'FIRE',
+        title: 'Vile Parle Fire Command',
+        desc: '0.8 km · 14 Boats · 22 Pumps',
+        coords: [19.0970, 72.8440],
+        color: '#d97706',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #d97706;">Mumbai Fire Brigade — Vile Parle Station</strong><br>
+            <span>Near Station Underpass · 0.8 km from DJSCE</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Fleet: 14 Inflatable Boats · 22 High-Cap Pumps · 65 Personnel</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #fffbeb; border-left: 3px solid #d97706; font-size: 0.72rem;">
+              Service Node: Port 5002 · Rapid Dewatering & Swift-Water Rescue
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-JUHU-MARINE',
+        code: 'RESC',
+        title: 'Juhu Marine Swift-Water Unit',
+        desc: '2.2 km · 40 Lifeguards · Boats',
+        coords: [19.0988, 72.8267],
+        color: '#0284c7',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #0284c7;">Juhu Beach Marine Lifeguard Post</strong><br>
+            <span>Juhu Tara Coastal Station · 2.2 km from Ground Zero</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Fleet: Inflatable Zodiacs, Coastal Storm Patrol, 40 Swimmers</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #f0f9ff; border-left: 3px solid #0284c7; font-size: 0.72rem;">
+              Service Node: Port 5002 · Coastal Cyclone & Tidal Surge Evacuation
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-MILAN-SUBWAY',
+        code: 'CORDON',
+        title: 'Milan Subway Underpass',
+        desc: 'Submerged (4.2 ft) · Barricaded',
+        coords: [19.0920, 72.8480],
+        color: '#dc2626',
+        pulse: true,
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #dc2626;">Milan Subway Underpass (Inundation Hazard)</strong><br>
+            <span>Connecting Vile Parle West & East · 1.8 km</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Water Ingress: 4.2 ft · Barricaded by Mumbai Traffic Police</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #fee2e2; border-left: 3px solid #dc2626; font-size: 0.72rem;">
+              Service Node: Port 5003 · Cordon Active · Traffic Diverted to WEH
+            </div>
+          </div>
+        `
+      },
+      {
+        id: 'FAC-ANDHERI-SUBWAY',
+        code: 'CORDON',
+        title: 'Andheri Subway Checkpoint',
+        desc: 'Inundation Risk · Barricaded',
+        coords: [19.1190, 72.8460],
+        color: '#dc2626',
+        popup: `
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="color: #dc2626;">Andheri Subway Underpass Checkpoint</strong><br>
+            <span>SV Road Connector · 1.9 km North of DJSCE</span><br>
+            <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #64748b;">Water Level: 3.1 ft · Barricaded</span><br>
+            <div style="margin-top: 4px; padding: 4px 6px; background: #fee2e2; border-left: 3px solid #dc2626; font-size: 0.72rem;">
+              Service Node: Port 5003 · Cordon Active · Diverted via Gokhale Bridge
+            </div>
+          </div>
+        `
+      }
+    ];
+
+    function createCustomMarker(fac) {
+      const icon = L.divIcon({
+        className: 'custom-facility-marker',
+        html: `
+          <div class="marker-card ${fac.pulse ? 'marker-hazard-pulse' : ''}">
+            <div class="marker-badge" style="background: ${fac.color};">
+              <span>${fac.code}</span>
+            </div>
+            <div class="marker-info">
+              <div class="marker-name">${fac.title}</div>
+              <div class="marker-desc">${fac.desc}</div>
+            </div>
+          </div>
+        `,
+        iconSize: [180, 32],
+        iconAnchor: [13, 16],
+      });
+
+      const m = L.marker(fac.coords, { icon });
+      if (fac.popup) m.bindPopup(fac.popup);
+      return m;
+    }
+
+    function initMasterMap() {
+      map = L.map('map-container', {
+        zoomControl: true,
+        scrollWheelZoom: true,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors | Mumbai Suburban GIS Grid'
+      }).addTo(map);
+
+      markersLayer = L.layerGroup().addTo(map);
+
+      // Add all core suburban facilities with permanent badges & labels
+      FACILITIES_DATA.forEach(fac => {
+        const m = createCustomMarker(fac);
+        m.addTo(markersLayer);
+      });
+
+      recenterSectorMap();
+
+      setTimeout(() => {
+        if (map) {
+          map.invalidateSize();
+          recenterSectorMap();
+        }
+      }, 300);
+    }
+
+    function recenterSectorMap() {
+      if (!map) return;
+      map.invalidateSize();
+      const bounds = L.latLngBounds([
+        [19.0880, 72.8220],
+        [19.1350, 72.8550]
+      ]);
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+
+    function clearScenarioOverlays() {
+      if (!map) return;
+      currentIncidentOverlayLayers.forEach(l => map.removeLayer(l));
+      currentIncidentOverlayLayers = [];
+    }
+
+    function renderMapForScenario(scenarioId) {
+      if (!map) return;
+      clearScenarioOverlays();
+
+      if (scenarioId === 'SCENARIO-DJSCE-MONSOON-BURST') {
+        // 1. Inundation Hazard Perimeter around Milan Subway
+        const floodCircle = L.circle([19.0920, 72.8480], {
+          radius: 950,
+          color: '#dc2626',
+          weight: 2,
+          fillColor: '#fee2e2',
+          fillOpacity: 0.28,
+          dashArray: '5, 5'
+        }).bindPopup('<strong>Milan Subway Inundation Hazard Zone</strong><br>Sensor: Water depth 4.2 ft · Hazard Buffer 950m');
+        floodCircle.addTo(map);
+        currentIncidentOverlayLayers.push(floodCircle);
+
+        // 2. Ambulance Priority Green Corridor Polyline
+        // Milan Subway -> Nanavati -> Cooper
+        const greenCorridor = L.polyline([
+          [19.0920, 72.8480],
+          [19.0980, 72.8440],
+          [19.0980, 72.8420],
+          [19.1042, 72.8375]
+        ], {
+          color: '#16a34a',
+          weight: 5,
+          opacity: 0.9,
+          dashArray: '8, 6'
+        }).bindPopup('<strong>Active Ambulance Green Corridor</strong><br>Milan Subway Checkpoint -> Nanavati Max -> Cooper Hospital (Priority ALS Transfer)');
+        greenCorridor.addTo(map);
+        currentIncidentOverlayLayers.push(greenCorridor);
+
+        // Frame Vile Parle / Milan / Cooper / Nanavati
+        const subBounds = L.latLngBounds([
+          [19.0890, 72.8330],
+          [19.1120, 72.8540]
+        ]);
+        map.fitBounds(subBounds, { padding: [30, 30] });
+
+      } else if (scenarioId === 'SCENARIO-JUHU-CYCLONE-TAUKTAE') {
+        // Coastal Storm Surge Buffer around Juhu Beach
+        const cycloneCircle = L.circle([19.0988, 72.8267], {
+          radius: 1400,
+          color: '#ea580c',
+          weight: 2,
+          fillColor: '#ffedd5',
+          fillOpacity: 0.32,
+          dashArray: '6, 6'
+        }).bindPopup('<strong>Juhu Beach Storm Surge Hazard Zone</strong><br>Tidal Height: 5.2m · Coastal Evacuation Radius 1.4km');
+        cycloneCircle.addTo(map);
+        currentIncidentOverlayLayers.push(cycloneCircle);
+
+        // Evacuation Line from Juhu Beach to Cooper Hospital
+        const evacRoute = L.polyline([
+          [19.0988, 72.8267],
+          [19.1020, 72.8320],
+          [19.1042, 72.8375]
+        ], {
+          color: '#0284c7',
+          weight: 5,
+          opacity: 0.9,
+          dashArray: '8, 6'
+        }).bindPopup('<strong>Coastal Evacuation Corridor</strong><br>Juhu Marine Unit -> Cooper Hospital');
+        evacRoute.addTo(map);
+        currentIncidentOverlayLayers.push(evacRoute);
+
+        const subBounds = L.latLngBounds([
+          [19.0940, 72.8210],
+          [19.1150, 72.8450]
+        ]);
+        map.fitBounds(subBounds, { padding: [30, 30] });
+
+      } else if (scenarioId === 'SCENARIO-ANDHERI-MIDC-GAS') {
+        // Toxic Chemical Vapor Dispersion Zone around MIDC
+        const hazmatCircle = L.circle([19.1200, 72.8680], {
+          radius: 1300,
+          color: '#d97706',
+          weight: 2,
+          fillColor: '#fef3c7',
+          fillOpacity: 0.35,
+          dashArray: '6, 6'
+        }).bindPopup('<strong>MIDC Chemical Gas Leak Perimeter</strong><br>Toxic Ammonia Vapor Dispersion: 1.3 km Cordon');
+        hazmatCircle.addTo(map);
+        currentIncidentOverlayLayers.push(hazmatCircle);
+
+        // MIDC Hazmat Marker
+        const hazmatPin = createCustomMarker({
+          code: 'HAZ',
+          title: 'MIDC Andheri Chemical Industrial Area',
+          desc: 'Toxic Ammonia Leak · Evacuation Cordon',
+          coords: [19.1200, 72.8680],
+          color: '#d97706',
+          pulse: true,
+          popup: '<strong>MIDC Chemical Epicenter</strong><br>Central Road, Andheri East · Decontamination Teams Deployed'
+        });
+        hazmatPin.addTo(map);
+        currentIncidentOverlayLayers.push(hazmatPin);
+
+        // Evacuation Line from MIDC to Kokilaben & Nanavati
+        const hazRoute = L.polyline([
+          [19.1200, 72.8680],
+          [19.1190, 72.8460],
+          [19.1310, 72.8250]
+        ], {
+          color: '#16a34a',
+          weight: 5,
+          opacity: 0.9,
+          dashArray: '8, 6'
+        }).bindPopup('<strong>Hazmat Decontamination Route</strong><br>MIDC Industrial Estate -> Kokilaben Burn & Trauma ICU');
+        hazRoute.addTo(map);
+        currentIncidentOverlayLayers.push(hazRoute);
+
+        const subBounds = L.latLngBounds([
+          [19.0950, 72.8220],
+          [19.1360, 72.8750]
+        ]);
+        map.fitBounds(subBounds, { padding: [30, 30] });
+      }
+    }
+
+    let allScenarios = [];
+    async function fetchScenarios() {
+      try {
+        const res = await fetch('/api/scenarios');
+        const data = await res.json();
+        if (data.success) {
+          allScenarios = data.scenarios;
+          selectScenario('SCENARIO-DJSCE-MONSOON-BURST');
+        }
+      } catch (err) {}
+    }
+
+    function selectScenario(scenarioId) {
+      const sc = allScenarios.find(s => s.id === scenarioId);
+      if (!sc) return;
+      selectedScenarioData = sc;
+
+      document.getElementById('inquiry-phase-box').style.display = 'block';
+      document.getElementById('tally-scenario-title').innerText = sc.title;
+
+      renderInitialTally(sc);
+      renderMapForScenario(scenarioId);
+    }
+
+    function renderInitialTally(sc) {
+      const reqHosp = sc.requirements?.hospital || {};
+      const reqRes = sc.requirements?.resource || {};
+      const tbody = document.getElementById('tally-table-body');
+
+      tbody.innerHTML = `
+        <tr>
+          <td><strong>Trauma &amp; Emergency Beds</strong></td>
+          <td><span class="badge badge-red">${reqHosp.bedsRequired || 90} Beds</span> (${sc.triage?.t1Immediate || 40} T1 / ${sc.triage?.t2Delayed || 50} T2)</td>
+          <td><strong style="color: #2563eb;">290 Beds Available</strong> across Cooper, Nanavati &amp; Kokilaben</td>
+          <td><strong style="color: #166534;">+200 Beds Surplus</strong></td>
+          <td><span class="badge badge-green">Feasible</span></td>
+        </tr>
+        <tr>
+          <td><strong>Ambulances (ALS / BLS)</strong></td>
+          <td><span class="badge badge-orange">${reqHosp.ambulancesRequired || 16} Ambulances</span></td>
+          <td><strong style="color: #2563eb;">46 Ambulances Available</strong></td>
+          <td><strong style="color: #166534;">+30 Ambulances Surplus</strong></td>
+          <td><span class="badge badge-green">Feasible</span></td>
+        </tr>
+        <tr>
+          <td><strong>Inflatable Rescue Boats</strong></td>
+          <td><span class="badge badge-blue">${reqRes.boatsRequired || 14} Boats</span></td>
+          <td><strong style="color: #2563eb;">38 Boats Ready</strong> (Vile Parle &amp; Juhu)</td>
+          <td><strong style="color: #166534;">+24 Boats Surplus</strong></td>
+          <td><span class="badge badge-green">Feasible</span></td>
+        </tr>
+        <tr>
+          <td><strong>Submersible Dewatering Pumps</strong></td>
+          <td><span class="badge badge-blue">${reqRes.pumpsRequired || 22} Pumps</span></td>
+          <td><strong style="color: #2563eb;">52 Pumps Ready</strong> (BMC K-West Depot)</td>
+          <td><strong style="color: #166534;">+30 Pumps Surplus</strong></td>
+          <td><span class="badge badge-green">Feasible</span></td>
+        </tr>
+      `;
+    }
+
+    async function executeInquirePhase() {
+      if (!selectedScenarioData) return;
+      const btn = document.getElementById('btn-inquire-step');
+      btn.innerText = 'Querying Live Nodes...';
+      try {
+        const res = await fetch('/api/orchestrate/inquire', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alertData: selectedScenarioData }),
+        });
+        const data = await res.json();
+        if (data.success && data.tally) {
+          btn.innerText = 'Network Surveyed (Phase 1 OK)';
+          btn.className = 'btn btn-secondary btn-sm';
+          document.getElementById('tally-feasibility-note').innerText =
+            `Live inventory validated (+${data.tally.surplus.beds} surplus beds). Click "Step 2" to dispatch requirements to all domain dashboards.`;
+        }
+      } catch (err) {
+        btn.innerText = 'Step 1: Inquire Again';
+      }
+    }
+
+    async function executeDeployPhase() {
+      if (!selectedScenarioData) return;
+      dispatchDirect(selectedScenarioData);
+    }
+
+    async function dispatchDirect(alertPayload) {
+      currentIncidentData = alertPayload;
+      try {
+        const res = await fetch('/api/orchestrate/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ alertData: alertPayload }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          renderIncidentBanner(data.incident);
+        }
+      } catch (err) {}
+    }
+
+    function renderIncidentBanner(inc) {
+      if (!inc) {
+        document.getElementById('active-incident-box').style.display = 'none';
+        return;
+      }
+      document.getElementById('active-incident-box').style.display = 'block';
+      document.getElementById('inc-title').innerText = inc.title;
+      document.getElementById('inc-alert-badge').innerText = `${inc.alertLevel} Alert`;
+      document.getElementById('inc-alert-badge').className = inc.alertLevel === 'Red' ? 'badge badge-red' : 'badge badge-orange';
+      document.getElementById('inc-desc').innerText = `Ground Zero: ${inc.locationName} · Population: ${(inc.affectedPopulation || 240000).toLocaleString()}`;
+      document.getElementById('inc-status-badge').innerText = inc.status;
+
+      if (inc.triage) {
+        document.getElementById('chip-t1-count').innerText = `T1 Immediate (Trauma/ICU): ${inc.triage.t1Immediate || 40} Patients (1:1 ALS Amb)`;
+        document.getElementById('chip-t2-count').innerText = `T2 Delayed (Inundation Ward): ${inc.triage.t2Delayed || 50} Patients (Step-Down)`;
+      }
+
+      if (inc.requirements) {
+        if (inc.requirements.hospital) {
+          document.getElementById('chip-hosp-demand').innerText = `${inc.requirements.hospital.bedsRequired} Beds · ${inc.requirements.hospital.ambulancesRequired} Ambulances`;
+        }
+        if (inc.requirements.resource) {
+          document.getElementById('chip-res-demand').innerText = `${inc.requirements.resource.boatsRequired} Boats · ${inc.requirements.resource.pumpsRequired} Pumps`;
+        }
+        if (inc.requirements.traffic) {
+          document.getElementById('chip-traf-demand').innerText = `${inc.requirements.traffic.closures.join(', ')} · WEH Green Corridor`;
+        }
+        if (inc.requirements.notification) {
+          document.getElementById('chip-notif-demand').innerText = `K-West Alert · ${inc.requirements.notification.sirensToSound} Sirens`;
+        }
+      }
+
+      document.getElementById('factsheet-title').innerText = inc.title;
+      document.getElementById('factsheet-type').innerText = `${inc.disasterTypeName || inc.disasterType} (${inc.alertLevel} Alert)`;
+      document.getElementById('factsheet-pop').innerText = `${(inc.affectedPopulation || 240000).toLocaleString()} citizens in K-West Ward`;
+    }
+
+    async function resetAll() {
+      try {
+        await fetch('/api/reset', { method: 'POST' });
+        document.getElementById('active-incident-box').style.display = 'none';
+        document.getElementById('inquiry-phase-box').style.display = 'none';
+        const btnInquire = document.getElementById('btn-inquire-step');
+        if (btnInquire) {
+          btnInquire.innerText = 'Step 1: Inquire Live Availability';
+          btnInquire.className = 'btn btn-primary btn-sm';
+        }
+        document.getElementById('chip-cooper').className = 'absorption-step-chip';
+        document.getElementById('chip-cooper-status').innerText = 'Awaiting Response from :5001...';
+        document.getElementById('factsheet-cooper').innerText = 'Committed dynamically via Port 5001';
+        document.getElementById('chip-nanavati').className = 'absorption-step-chip';
+        document.getElementById('chip-nanavati-status').innerText = 'Awaiting Response from :5001...';
+        document.getElementById('factsheet-nanavati').innerText = 'Committed dynamically via Port 5001';
+        document.getElementById('chip-kokilaben').className = 'absorption-step-chip';
+        document.getElementById('chip-kokilaben-status').innerText = 'Awaiting Response from :5001...';
+        document.getElementById('factsheet-kokilaben').innerText = 'Committed dynamically via Port 5001';
+        const remBadge = document.getElementById('cumulative-remaining-badge');
+        if (remBadge) {
+          remBadge.className = 'badge badge-orange';
+          remBadge.innerText = 'Remaining Needed: 90 Beds';
+        }
+        clearScenarioOverlays();
+        recenterSectorMap();
+      } catch (err) {}
+    }
+
+    function renderState(serverState) {
+      if (serverState.currentIncident) {
+        renderIncidentBanner(serverState.currentIncident);
+      }
+
+      const services = serverState.servicesStatus || {};
+      updateServiceCard('hospital', services['hospital-service']);
+      updateServiceCard('resource', services['resource-service']);
+      updateServiceCard('traffic', services['traffic-service']);
+      updateServiceCard('notification', services['notification-service']);
+
+      updateCumulativeHospitalChips(services['hospital-service']);
+
+      // Logs table
+      const logsBody = document.getElementById('logs-table-body');
+      if (serverState.coordinationLogs) {
+        logsBody.innerHTML = serverState.coordinationLogs.map(l => {
+          let badgeClass = 'badge-gray';
+          if (l.level === 'ACTION') badgeClass = 'badge-orange';
+          if (l.level === 'SUCCESS') badgeClass = 'badge-green';
+          return `
+            <tr>
+              <td style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.72rem;">${l.timestamp}</td>
+              <td style="font-weight: 700; color: var(--text-primary); font-size: 0.76rem;">${l.event}</td>
+              <td style="color: var(--text-secondary); font-size: 0.74rem;">${l.details}</td>
+              <td><span class="badge ${badgeClass}">${l.level}</span></td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Incidents table
+      const tbody = document.getElementById('incidents-table-body');
+      if (serverState.incidents && serverState.incidents.length > 0) {
+        tbody.innerHTML = serverState.incidents.map(inc => `
+          <tr>
+            <td style="font-family: var(--font-mono); color: var(--text-muted);">${inc.timestamp}</td>
+            <td>
+              <div style="font-weight: 700; color: var(--text-primary);">${inc.title}</div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">${inc.locationName}</div>
+            </td>
+            <td><span class="badge ${inc.alertLevel === 'Red' ? 'badge-red' : 'badge-orange'}">${inc.disasterTypeName || inc.disasterType}</span></td>
+            <td style="font-size: 0.74rem; color: var(--text-secondary);">
+              ${(inc.servicesSummary || []).filter(Boolean).join(' · ') || 'Coordinated across all 4 Mumbai services'}
+            </td>
+            <td><span class="badge badge-green">Resolved (${inc.executionTimeMs || 140}ms)</span></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function updateCumulativeHospitalChips(hospSvc) {
+      if (!hospSvc || !hospSvc.committedData) return;
+      const details = hospSvc.committedData.details || {};
+      const bedsCollected = details.bedsCollected || 0;
+      const bedsRemaining = details.bedsRemaining !== undefined ? details.bedsRemaining : Math.max(0, 90 - bedsCollected);
+
+      const remBadge = document.getElementById('cumulative-remaining-badge');
+      if (bedsRemaining === 0) {
+        remBadge.className = 'badge badge-green';
+        remBadge.innerText = 'Requirement 100% Satisfied (0 Remaining)';
+      } else {
+        remBadge.className = 'badge badge-orange';
+        remBadge.innerText = `Remaining Needed: ${bedsRemaining} Beds`;
+      }
+
+      const list = details.allResponses && details.allResponses.length > 0 ? details.allResponses : (details.facilityName ? [details] : []);
+      list.forEach(item => {
+        const name = item.facilityName || '';
+        const b = item.bedsCommitted !== undefined ? item.bedsCommitted : item.beds;
+        const a = item.ambulancesCommitted !== undefined ? item.ambulancesCommitted : item.ambulances;
+        if (name.includes('Cooper')) {
+          const chip = document.getElementById('chip-cooper');
+          chip.className = 'absorption-step-chip active';
+          document.getElementById('chip-cooper-status').innerText = `Committed ${b} Beds · ${a} Amb`;
+          document.getElementById('factsheet-cooper').innerText = `${b} Beds · ${a} Amb`;
+        }
+        if (name.includes('Nanavati')) {
+          const chip = document.getElementById('chip-nanavati');
+          chip.className = 'absorption-step-chip active';
+          document.getElementById('chip-nanavati-status').innerText = `Committed ${b} Beds · ${a} Amb`;
+          document.getElementById('factsheet-nanavati').innerText = `${b} Beds · ${a} Amb`;
+        }
+        if (name.includes('Kokilaben')) {
+          const chip = document.getElementById('chip-kokilaben');
+          chip.className = 'absorption-step-chip active';
+          document.getElementById('chip-kokilaben-status').innerText = `Committed ${b} Beds · ${a} Amb`;
+          document.getElementById('factsheet-kokilaben').innerText = `${b} Beds · ${a} Amb`;
+        }
+      });
+    }
+
+    function updateServiceCard(key, svc) {
+      if (!svc) return;
+      const card = document.getElementById(`card-${key}`);
+      const badge = document.getElementById(`badge-${key}`);
+      const details = document.getElementById(`details-${key}`);
+      const time = document.getElementById(`time-${key}`);
+
+      if (svc.status === 'COMMITTED') {
+        card.className = 'service-card active-committed';
+        badge.innerText = 'Quorum Committed (100%)';
+        badge.className = 'badge badge-green';
+        if (svc.committedData) {
+          details.innerText = svc.committedData.summary || 'Capacity confirmed.';
+          time.innerText = svc.committedData.timestamp || '';
+        }
+      } else if (svc.status === 'AGGREGATING') {
+        card.className = 'service-card waiting';
+        badge.innerText = 'Absorbing Quota (In Progress)...';
+        badge.className = 'badge badge-blue';
+        if (svc.committedData) {
+          details.innerText = svc.committedData.summary || 'Nodes reverting with capacity...';
+          time.innerText = svc.committedData.timestamp || 'In Progress';
+        }
+      } else if (svc.status === 'WAITING_RESPONSE') {
+        card.className = 'service-card waiting';
+        badge.innerText = 'Awaiting Service Response...';
+        badge.className = 'badge badge-orange';
+        details.innerText = 'Requirement dispatched. Awaiting confirmation from domain dashboard...';
+        time.innerText = 'Dispatched';
+      } else {
+        card.className = 'service-card';
+        badge.innerText = 'Standby';
+        badge.className = 'badge badge-gray';
+        details.innerText = 'Autonomous service on normal standby.';
+        time.innerText = '--';
+      }
+    }
+
+    function openAllDashboards() {
+      [5001, 5002, 5003, 5004, 5005].forEach(p => window.open(`http://localhost:${p}`, '_blank'));
+    }
+
+    function openResearchModal() {
+      document.getElementById('research-modal').classList.add('open');
+    }
+    function closeResearchModal() {
+      document.getElementById('research-modal').classList.remove('open');
+    }
+
+    function openFactsheetModal() {
+      document.getElementById('factsheet-modal').classList.add('open');
+    }
+    function closeFactsheetModal() {
+      document.getElementById('factsheet-modal').classList.remove('open');
+    }
+
+    async function inspectContract(url) {
+      document.getElementById('contract-modal').classList.add('open');
+      const contentEl = document.getElementById('contract-content');
+      contentEl.innerText = 'Loading OpenAPI specification...';
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        contentEl.innerText = JSON.stringify(data, null, 2);
+      } catch (err) {
+        contentEl.innerText = 'Failed to load contract: ' + err.message;
+      }
+    }
+    function closeModal() {
+      document.getElementById('contract-modal').classList.remove('open');
+    }
+
+    // Initialize
+    initMasterMap();
+    fetchScenarios();
+
+    const evt = new EventSource('/api/events');
+    evt.onmessage = e => {
+      try { renderState(JSON.parse(e.data)); } catch (err) {}
+    };
+
+    fetch('/api/status').then(r => r.json()).then(d => {
+      if (d.success) renderState(d.data);
+    });
+  </script>
+</body>
+</html>

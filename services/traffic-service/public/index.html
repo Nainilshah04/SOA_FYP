@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Operations &amp; Safe Routing | Mumbai Traffic Police</title>
+  <link rel="stylesheet" href="/shared/styles/command-center.css">
+  <style>
+    .routes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.15rem;
+    }
+    .route-card {
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.15s ease;
+    }
+    .route-card.committed {
+      border-left: 4px solid var(--status-emerald);
+      background: #fbfdfc;
+    }
+    .route-card.closed {
+      border-left: 4px solid var(--status-red);
+      background: #fdfafa;
+    }
+    .commit-form-box {
+      background: #f8fafc;
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .commit-form-box select, .commit-form-box input {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.78rem;
+      font-family: var(--font-sans);
+      border: 1px solid var(--border-medium);
+      border-radius: var(--radius-sm);
+      outline: none;
+      background: #ffffff;
+    }
+    .commit-form-box select:focus, .commit-form-box input:focus {
+      border-color: var(--brand-primary);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Cross-Service Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrapper">
+      <div class="brand-badge">PORT 5003</div>
+      <div class="brand-text">
+        <h1>Mumbai Traffic Police (Western Suburbs Operations)</h1>
+        <p>Milan Subway · Andheri Subway · Western Express Highway · SV Road Arterial Corridor</p>
+      </div>
+    </div>
+
+    <nav class="service-pills">
+      <a href="http://localhost:5000" class="nav-pill" title="Master Orchestrator">
+        <span>Orchestrator</span><span class="port-badge">5000</span>
+      </a>
+      <a href="http://localhost:5001" class="nav-pill" title="Hospital Emergency Service">
+        <span>Hospital</span><span class="port-badge">5001</span>
+      </a>
+      <a href="http://localhost:5002" class="nav-pill" title="Rescue & Resource Logistics">
+        <span>Resource</span><span class="port-badge">5002</span>
+      </a>
+      <a href="http://localhost:5003" class="nav-pill active" title="Traffic & Safe Routing Police">
+        <span>Traffic</span><span class="port-badge">5003</span>
+      </a>
+      <a href="http://localhost:5004" class="nav-pill" title="Public Advisory & Sirens">
+        <span>Notification</span><span class="port-badge">5004</span>
+      </a>
+      <a href="http://localhost:5005" class="nav-pill" title="Service Registry Hub">
+        <span>Registry</span><span class="port-badge">5005</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <a href="http://localhost:5000" class="btn btn-secondary btn-sm">
+        Return to Incident Command (5000)
+      </a>
+    </div>
+  </header>
+
+  <main class="page-container">
+
+    <!-- Active Requirement Notification Banner -->
+    <div id="incoming-req-banner" style="display: none; margin-bottom: 1.15rem;">
+      <div class="card" style="border-left: 4px solid var(--brand-primary); padding: 1.15rem; background: #ffffff;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span class="badge badge-blue">Incoming Demand Dispatched from Master</span>
+              <h3 style="font-size: 0.98rem; font-weight: 700; color: var(--text-primary);" id="banner-incident-title">
+                Active Traffic Cordon Requirement
+              </h3>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);" id="banner-incident-desc">
+              Requirement dispatched from Master Command. Update each checkpoint with verified field status below:
+            </p>
+          </div>
+          <div style="text-align: right;">
+            <span class="badge badge-orange" id="banner-remaining-badge" style="font-size: 0.76rem;">
+              Checkpoints Remaining: 3
+            </span>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1.5rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-subtle); font-size: 0.76rem; font-family: var(--font-mono);">
+          <span>Checkpoints Demanded: <strong id="val-req-checkpoints" style="color: var(--text-primary);">3 Key Arteries</strong></span>
+          <span>Checkpoints Secured: <strong id="val-col-checkpoints" style="color: #166534;">0</strong></span>
+          <span>Remaining to Cordon: <strong id="val-rem-checkpoints" style="color: #b91c1c;">3</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Overview Bar -->
+    <div class="control-bar">
+      <div class="control-bar-info">
+        <div class="status-dot" id="status-dot"></div>
+        <div class="control-bar-text">
+          <h3 id="current-status-label">Traffic Status: Normal Monitored Flow</h3>
+          <p>Jurisdiction: Vile Parle West, Milan Subway, Andheri Subway, SV Road &amp; Western Express Highway.</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.4rem;">
+        <button class="btn btn-secondary btn-sm" onclick="resetTraffic()">
+          Reset Standby State
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Inundated Roads Closed</span>
+          <span class="badge badge-red">Barricaded</span>
+        </div>
+        <div class="stat-value" id="stat-closed" style="color: var(--status-red);">0 Subways</div>
+        <div class="stat-meta">Milan &amp; Andheri Underpasses</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Active Green Corridors</span>
+          <span class="badge badge-green">Ambulance Priority</span>
+        </div>
+        <div class="stat-value" id="stat-corridors" style="color: #16a34a;">0 Corridors</div>
+        <div class="stat-meta">Direct transit to Cooper Hospital</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Corridor Speed Limit</span>
+          <span class="badge badge-blue">Signal Synchronized</span>
+        </div>
+        <div class="stat-value" id="stat-speed">80 km/h</div>
+        <div class="stat-meta">On Western Express Highway flyover</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Incidents Handled</span>
+          <span class="badge badge-gray">Suburban Network</span>
+        </div>
+        <div class="stat-value" id="stat-handled">0 Events</div>
+        <div class="stat-meta">Coordinated with BMC Command</div>
+      </div>
+    </div>
+
+    <!-- Routes Grid with Dynamic Checkpoint Forms -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+          Autonomous Traffic Checkpoints (Field Verification &amp; Cordon)
+        </h3>
+        <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+          Update field verification status for each artery to report live cordon status to Master
+        </span>
+      </div>
+
+      <div class="routes-grid" id="routes-container">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Traffic Coordination Logs -->
+    <div class="card" style="margin-top: 1.15rem;">
+      <div class="card-header">
+        <h3 class="card-title">Traffic Division Field Verification Audit Log</h3>
+        <span class="badge badge-gray">SSE Stream</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Event</th>
+              <th>Operational Details</th>
+              <th>Level</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    async function commitRouteDynamic(routeId) {
+      const selectStatus = document.getElementById(`select-status-${routeId}`);
+      const inputClearance = document.getElementById(`input-clearance-${routeId}`);
+      const statusVal = selectStatus ? selectStatus.value : 'BARRICADED';
+      const clearanceVal = inputClearance ? inputClearance.value : 'Barricaded by Police';
+
+      let actionType = 'BARRICADED';
+      if (statusVal.includes('GREEN')) actionType = 'GREEN_CORRIDOR';
+
+      try {
+        const res = await fetch('/api/commit-route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            routeId,
+            status: statusVal,
+            clearance: clearanceVal,
+            actionType,
+          }),
+        });
+        const data = await res.json();
+      } catch (err) {
+        console.error('Route commit error:', err);
+      }
+    }
+
+    async function resetTraffic() {
+      try {
+        await fetch('/api/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actionType: 'RESET' }),
+        });
+      } catch (err) {}
+    }
+
+    function renderState(state) {
+      // Status
+      document.getElementById('current-status-label').innerText = `Traffic Status: ${state.routingStatus}`;
+      const statusDot = document.getElementById('status-dot');
+      if (state.routingStatus.includes('EMERGENCY') || state.routingStatus.includes('SECURED')) {
+        statusDot.className = 'status-dot red';
+      } else {
+        statusDot.className = 'status-dot';
+      }
+
+      // Stats
+      document.getElementById('stat-closed').innerText = `${state.roadsClosedCount} Closed`;
+      document.getElementById('stat-corridors').innerText = `${state.greenCorridorsActive} Active`;
+      document.getElementById('stat-handled').innerText = `${state.activeIncidentsHandled} Events`;
+
+      // Incoming Requirement Banner
+      const banner = document.getElementById('incoming-req-banner');
+      if (state.activeRequirement) {
+        banner.style.display = 'block';
+        const req = state.activeRequirement;
+        document.getElementById('banner-incident-title').innerText = req.title;
+        document.getElementById('val-col-checkpoints').innerText = `${req.checkpointsSecured}`;
+        const rem = Math.max(0, req.checkpointsRequired - req.checkpointsSecured);
+        document.getElementById('val-rem-checkpoints').innerText = `${rem}`;
+
+        const remBadge = document.getElementById('banner-remaining-badge');
+        if (rem === 0) {
+          remBadge.className = 'badge badge-green';
+          remBadge.innerText = 'All Checkpoints Secured';
+        } else {
+          remBadge.className = 'badge badge-orange';
+          remBadge.innerText = `Checkpoints Remaining: ${rem}`;
+        }
+      } else {
+        banner.style.display = 'none';
+      }
+
+      // Routes Cards with Dynamic Checkpoint Forms
+      const container = document.getElementById('routes-container');
+      container.innerHTML = state.routes.map(r => {
+        const hasCommitted = r.contribution !== null;
+        let cardClass = 'route-card';
+        if (hasCommitted) {
+          cardClass += r.status.includes('CLOSED') ? ' closed' : ' committed';
+        }
+
+        let defaultAction = 'BARRICADED';
+        let defaultStatus = 'CLOSED (WATERLOGGED - BARRICADED)';
+        let defaultClearance = 'Barricaded by Vile Parle Division. Diverted via SV Road.';
+
+        if (r.id === 'ROUTE-WEH') {
+          defaultAction = 'GREEN_CORRIDOR';
+          defaultStatus = 'GREEN_CORRIDOR (AMBULANCE PRIORITY)';
+          defaultClearance = 'Dedicated Emergency Convoy Lane to Cooper & Nanavati.';
+        } else if (r.id === 'ROUTE-ANDHERI-SUBWAY') {
+          defaultClearance = 'Underpass sealed. Traffic diverted via Gokhale Bridge.';
+        }
+
+        let actionArea = '';
+        if (hasCommitted) {
+          actionArea = `
+            <div style="background: ${r.status.includes('CLOSED') ? '#fef2f2' : '#f0fdf4'}; border: 1px solid ${r.status.includes('CLOSED') ? '#fca5a5' : '#86efac'}; border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.76rem; color: ${r.status.includes('CLOSED') ? '#991b1b' : '#166534'};">
+              <strong>Secured Status:</strong> ${r.status}<br>
+              <strong>Clearance Note:</strong> ${r.clearance}
+              <div style="font-size: 0.68rem; font-family: var(--font-mono); margin-top: 2px;">
+                Timestamp: ${r.contribution.timestamp}
+              </div>
+            </div>
+          `;
+        } else if (state.activeRequirement && state.activeRequirement.status !== 'COMMITTED' && (r.id === 'ROUTE-MILAN-SUBWAY' || r.id === 'ROUTE-ANDHERI-SUBWAY' || r.id === 'ROUTE-WEH')) {
+          actionArea = `
+            <div class="commit-form-box">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-primary);">
+                Report Field Checkpoint Status:
+              </div>
+              <div>
+                <select id="select-status-${r.id}">
+                  <option value="${defaultStatus}" selected>${defaultStatus}</option>
+                  <option value="CLOSED (WATERLOGGED / HAZARD)">CLOSED (WATERLOGGED / HAZARD)</option>
+                  <option value="GREEN_CORRIDOR (AMBULANCE PRIORITY)">GREEN_CORRIDOR (AMBULANCE PRIORITY)</option>
+                  <option value="OPEN (NORMAL MONITORED FLOW)">OPEN (NORMAL MONITORED FLOW)</option>
+                </select>
+              </div>
+              <div>
+                <input type="text" id="input-clearance-${r.id}" value="${defaultClearance}">
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="commitRouteDynamic('${r.id}')">
+                Transmit Checkpoint Status to Master Command
+              </button>
+            </div>
+          `;
+        } else {
+          actionArea = `
+            <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">
+              Status: Monitored Normal Transit. Awaiting incident cordon orders from Master.
+            </div>
+          `;
+        }
+
+        return `
+          <div class="${cardClass}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+              <div>
+                <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--text-primary);">${r.name}</h4>
+                <div style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">${r.type}</div>
+              </div>
+              <span class="badge ${hasCommitted ? (r.status.includes('CLOSED') ? 'badge-red' : 'badge-green') : 'badge-gray'}">${hasCommitted ? (r.status.includes('CLOSED') ? 'Closed' : 'Green Corridor') : 'Open'}</span>
+            </div>
+
+            ${actionArea}
+
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; border-top: 1px solid var(--border-subtle); padding-top: 0.45rem; font-family: var(--font-mono); color: var(--text-secondary);">
+              <span>Speed Limit: <strong>${r.speedLimit}</strong></span>
+              <span>ID: <code>${r.id}</code></span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Logs table
+      const tbody = document.getElementById('logs-table-body');
+      tbody.innerHTML = state.coordinationLogs.map(log => `
+        <tr>
+          <td style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.72rem;">${log.timestamp}</td>
+          <td style="font-weight: 700; color: var(--text-primary); font-size: 0.76rem;">${log.event}</td>
+          <td style="color: var(--text-secondary); font-size: 0.74rem;">${log.details}</td>
+          <td><span class="badge ${log.level === 'SUCCESS' ? 'badge-green' : (log.level === 'ACTION' ? 'badge-orange' : 'badge-blue')}">${log.level}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    const evt = new EventSource('/api/events');
+    evt.onmessage = e => {
+      try { renderState(JSON.parse(e.data)); } catch (err) { console.error(err); }
+    };
+
+    fetch('/api/status').then(r => r.json()).then(d => {
+      if (d.success) renderState(d.data);
+    });
+  </script>
+</body>
+</html>

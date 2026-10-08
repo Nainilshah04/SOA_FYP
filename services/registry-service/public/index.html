@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Service Registry &amp; Chaos Console | ResilientResponse</title>
+  <link rel="stylesheet" href="/shared/styles/command-center.css">
+  <style>
+    .chaos-panel {
+      background: var(--bg-surface-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 1.15rem;
+    }
+    .chaos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.85rem;
+      margin-top: 0.85rem;
+    }
+    .chaos-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .chaos-item.failing {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.05);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Cross-Service Navigation -->
+  <header class="top-nav">
+    <div class="brand-wrapper">
+      <div class="brand-badge">REG-05 · DJSCE</div>
+      <div class="brand-text">
+        <h1>ResilientResponse — Service Discovery &amp; Registry Hub</h1>
+        <p>B.Tech IT Project · Dynamic Endpoint Registry &amp; Health Heartbeats · Port 5005</p>
+      </div>
+    </div>
+
+    <nav class="service-pills">
+      <a href="http://localhost:5000" class="nav-pill" title="Master Orchestrator">
+        <span>Orchestrator</span><span class="port-badge">5000</span>
+      </a>
+      <a href="http://localhost:5001" class="nav-pill" title="Hospital Emergency Service">
+        <span>Hospital</span><span class="port-badge">5001</span>
+      </a>
+      <a href="http://localhost:5002" class="nav-pill" title="Rescue & Resource Management">
+        <span>Resource</span><span class="port-badge">5002</span>
+      </a>
+      <a href="http://localhost:5003" class="nav-pill" title="Traffic & Safe Routing Service">
+        <span>Traffic</span><span class="port-badge">5003</span>
+      </a>
+      <a href="http://localhost:5004" class="nav-pill" title="Public Notification Service">
+        <span>Notification</span><span class="port-badge">5004</span>
+      </a>
+      <a href="http://localhost:5005" class="nav-pill active" title="Service Registry & Chaos Console">
+        <span>Registry</span><span class="port-badge">5005</span>
+      </a>
+    </nav>
+
+    <div class="nav-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openAllDashboards()">
+        Launch Service Cluster
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="viewServiceContract()">
+        OpenAPI Contract
+      </button>
+    </div>
+  </header>
+
+  <main class="page-container">
+
+    <!-- Status Banner -->
+    <div class="control-bar">
+      <div class="control-bar-info">
+        <div class="status-dot"></div>
+        <div class="control-bar-text">
+          <h3>Service Governance: Dynamic Discovery &amp; Runtime Binding</h3>
+          <p>Microservices register dynamically with this catalog. The Orchestrator queries this registry to resolve service endpoints.</p>
+        </div>
+      </div>
+      <span class="badge badge-green" id="heartbeat-badge">Heartbeat: Active (3.5s)</span>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Registered Microservices</span>
+          <span class="badge badge-gray">Topology</span>
+        </div>
+        <div class="stat-value" id="total-services-count">6 Nodes</div>
+        <div class="stat-meta">Autonomous HTTP processes</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Healthy Nodes</span>
+          <span class="badge badge-green">Uptime</span>
+        </div>
+        <div class="stat-value" id="healthy-nodes-count" style="color: var(--status-emerald);">6 / 6</div>
+        <div class="stat-meta">Passing heartbeat healthcheck</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Mean Inter-Service Latency</span>
+          <span class="badge badge-blue">Network</span>
+        </div>
+        <div class="stat-value" id="avg-latency" style="color: var(--status-blue);">1.8 ms</div>
+        <div class="stat-meta">Local loopback transit latency</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-label">Chaos Resilience State</span>
+          <span class="badge badge-gray" id="chaos-state-badge">Nominal</span>
+        </div>
+        <div class="stat-value" id="chaos-state-text" style="color: var(--status-emerald); font-size: 1.25rem;">Nominal (All UP)</div>
+        <div class="stat-meta">Fault-injection test ready</div>
+      </div>
+    </div>
+
+    <!-- Chaos Engineering / Fault Injection for Viva -->
+    <div class="chaos-panel">
+      <div class="card-header" style="border-color: var(--border-subtle);">
+        <div>
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">
+            Chaos Fault-Injection &amp; Resilience Test Bench
+          </div>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.2rem;">
+            Inject a failure into any domain service below, then execute an incident workflow on <a href="http://localhost:5000" target="_blank" style="color: var(--brand-primary); font-weight: 600;">Port 5000</a> to demonstrate Graceful Degradation under viva examination.
+          </p>
+        </div>
+      </div>
+
+      <div class="chaos-grid">
+        <div class="chaos-item" id="chaos-traffic-service">
+          <div>
+            <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-primary);">Traffic &amp; Routing Service</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">Port 5003 · Arterials &amp; Cordons</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="toggleChaos('traffic-service')">Simulate Failure</button>
+        </div>
+
+        <div class="chaos-item" id="chaos-hospital-service">
+          <div>
+            <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-primary);">Hospital Emergency Service</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">Port 5001 · Beds &amp; Ambulances</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="toggleChaos('hospital-service')">Simulate Failure</button>
+        </div>
+
+        <div class="chaos-item" id="chaos-resource-service">
+          <div>
+            <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-primary);">Rescue &amp; Resource Service</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">Port 5002 · NDRF &amp; Inventory</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="toggleChaos('resource-service')">Simulate Failure</button>
+        </div>
+
+        <div class="chaos-item" id="chaos-notification-service">
+          <div>
+            <div style="font-weight: 600; font-size: 0.82rem; color: var(--text-primary);">Public Notification Service</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">Port 5004 · CAP &amp; Cell Push</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="toggleChaos('notification-service')">Simulate Failure</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Service Discovery Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Runtime Service Catalog &amp; Health Registry</h3>
+        <button class="btn btn-secondary btn-sm" onclick="fetchServices()">Refresh Registry</button>
+      </div>
+
+      <div style="overflow-x: auto;">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Service Identity</th>
+              <th>SOA Topology Role</th>
+              <th>Binding Address</th>
+              <th>Health Status</th>
+              <th>Heartbeat Latency</th>
+              <th>Contract Spec</th>
+              <th>Direct Node</th>
+            </tr>
+          </thead>
+          <tbody id="services-table-body">
+            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Discovering microservices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Contract Modal -->
+  <div class="modal-backdrop" id="contract-modal">
+    <div class="modal-content">
+      <div class="card-header">
+        <h3 class="card-title">Service Registry Contract (OpenAPI Specification)</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">Close</button>
+      </div>
+      <pre class="code-block" id="contract-content">Loading contract schema...</pre>
+    </div>
+  </div>
+
+  <script>
+    let currentServices = {};
+    let currentChaos = {};
+
+    function openAllDashboards() {
+      const ports = [5000, 5001, 5002, 5003, 5004, 5005];
+      ports.forEach(p => window.open(`http://localhost:${p}`, '_blank'));
+    }
+
+    async function fetchServices() {
+      try {
+        const res = await fetch('/api/registry/services');
+        const data = await res.json();
+        if (data.success) {
+          currentServices = data.services;
+          renderServices();
+        }
+      } catch (err) {
+        console.error('Failed to load services:', err);
+      }
+    }
+
+    function renderServices() {
+      const tbody = document.getElementById('services-table-body');
+      const services = Object.values(currentServices);
+      
+      let healthy = 0;
+      let totalLatency = 0;
+      let latencyCount = 0;
+
+      tbody.innerHTML = services.map(s => {
+        const isOnline = s.status === 'ONLINE';
+        if (isOnline) healthy++;
+        if (s.latencyMs > 0) {
+          totalLatency += s.latencyMs;
+          latencyCount++;
+        }
+
+        const statusBadge = s.status === 'ONLINE'
+          ? '<span class="badge badge-green">Healthy</span>'
+          : s.status === 'SIMULATED_DOWN'
+          ? '<span class="badge badge-red">Simulated Down (Chaos)</span>'
+          : '<span class="badge badge-orange">Degraded</span>';
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight: 600; color: #ffffff;">${s.name}</div>
+              <div style="font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">${s.id}</div>
+            </td>
+            <td><span class="badge badge-gray">${s.role}</span></td>
+            <td><code style="color: #38bdf8; font-family: var(--font-mono); font-size: 0.74rem;">${s.url}</code></td>
+            <td>${statusBadge}</td>
+            <td><span style="font-family: var(--font-mono); font-weight: 600; color: ${s.latencyMs >= 0 ? 'var(--status-emerald)' : 'var(--status-red)'};">${s.latencyMs >= 0 ? s.latencyMs + ' ms' : 'FAILED'}</span></td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="inspectContract('${s.url}/api/contract')">View Contract</button>
+            </td>
+            <td>
+              <a href="${s.url}" target="_blank" class="btn btn-primary btn-sm">Launch Node</a>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('total-services-count').innerText = `${services.length} Nodes`;
+      document.getElementById('healthy-nodes-count').innerText = `${healthy} / ${services.length}`;
+      document.getElementById('avg-latency').innerText = latencyCount > 0 ? (totalLatency / latencyCount).toFixed(1) + ' ms' : '--';
+      
+      const failingCount = services.filter(s => s.status === 'SIMULATED_DOWN').length;
+      const chaosBadge = document.getElementById('chaos-state-badge');
+      const chaosText = document.getElementById('chaos-state-text');
+      if (failingCount > 0) {
+        chaosBadge.className = 'badge badge-red';
+        chaosBadge.innerText = 'Fault Injected';
+        chaosText.innerText = `${failingCount} Injected Fault${failingCount > 1 ? 's' : ''}`;
+        chaosText.style.color = 'var(--status-red)';
+      } else {
+        chaosBadge.className = 'badge badge-green';
+        chaosBadge.innerText = 'Nominal';
+        chaosText.innerText = 'Nominal (All UP)';
+        chaosText.style.color = 'var(--status-emerald)';
+      }
+
+      ['traffic-service', 'hospital-service', 'resource-service', 'notification-service'].forEach(id => {
+        const item = document.getElementById(`chaos-${id}`);
+        if (!item) return;
+        const isFailing = currentChaos[id];
+        const btn = item.querySelector('button');
+        if (isFailing) {
+          item.classList.add('failing');
+          btn.className = 'btn btn-primary btn-sm';
+          btn.innerText = 'Restore Service';
+        } else {
+          item.classList.remove('failing');
+          btn.className = 'btn btn-danger btn-sm';
+          btn.innerText = 'Simulate Failure';
+        }
+      });
+    }
+
+    async function toggleChaos(serviceId) {
+      try {
+        const res = await fetch('/api/registry/chaos/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serviceId }),
+        });
+        const data = await res.json();
+        currentChaos[serviceId] = data.isDown;
+        fetchServices();
+      } catch (err) {
+        alert('Failed to toggle chaos: ' + err.message);
+      }
+    }
+
+    async function viewServiceContract() {
+      inspectContract('/api/contract');
+    }
+
+    async function inspectContract(url) {
+      document.getElementById('contract-modal').classList.add('open');
+      const contentEl = document.getElementById('contract-content');
+      contentEl.innerText = 'Fetching OpenAPI contract from ' + url + '...';
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        contentEl.innerText = JSON.stringify(data, null, 2);
+      } catch (err) {
+        contentEl.innerText = 'Error loading contract: ' + err.message;
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('contract-modal').classList.remove('open');
+    }
+
+    const evtSource = new EventSource('/api/events');
+    evtSource.onmessage = function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.services) {
+          currentServices = {};
+          data.services.forEach(s => { currentServices[s.id] = s; });
+          currentChaos = data.chaos || {};
+          renderServices();
+        }
+      } catch (err) {
+        console.error('SSE parse error:', err);
+      }
+    };
+
+    fetchServices();
+  </script>
+</body>
+</html>
